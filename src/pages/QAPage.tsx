@@ -492,50 +492,49 @@ content: `Hi~ 我是福软小X\n非常高兴认识您。您有哪些想咨询的
             className="w-full rounded-full border border-gray-300 pl-4 pr-16 sm:pr-24 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             disabled={isLoading}
           />
-          {/* 按钮容器 - 使用弹性布局 */}
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-3">
-            
-            {/* 文件上传按钮 */}
-            <button 
-              className="text-gray-400 hover:text-blue-600 transition-colors"
-              disabled={isLoading}
-              onClick={() => document.getElementById('file-upload')?.click()}
-            >
-              <i className="fa-solid fa-file"></i>
-            </button>
-            
-            {/* 隐藏的文件输入 */}
-            <input
-              id="file-upload"
-              type="file"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  toast.info(`已选择文件: ${file.name}`);
-                  // 这里可以添加文件上传逻辑
-                  e.target.value = ''; // 重置文件输入，允许重复上传同一文件
-                }
-              }}
-            />
-            
-            {/* 语音输入按钮 */}
-            <button 
-              className="text-gray-400 hover:text-blue-600 transition-colors"
-              disabled={isLoading}
-            >
-              <i className="fa-solid fa-microphone"></i>
-            </button>
-            
-            {/* 发送按钮 */}
-            <button 
-              className="text-gray-400 hover:text-blue-600 transition-colors"
-              disabled={isLoading || !input.trim()}
-              onClick={handleSendMessage}
-            >
-              <i className="fa-solid fa-paper-plane"></i>
-            </button>
-          </div>
+           {/* 按钮容器 - 使用弹性布局 */}
+           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-3">
+             {/* 文件上传按钮 */}
+             <button 
+               className="text-gray-400 hover:text-blue-600 transition-colors"
+               disabled={isLoading}
+               onClick={() => document.getElementById('file-upload')?.click()}
+             >
+               <i className="fa-solid fa-file"></i>
+             </button>
+             
+             {/* 隐藏的文件输入 */}
+             <input
+               id="file-upload"
+               type="file"
+               className="hidden"
+               onChange={(e) => {
+                 const file = e.target.files?.[0];
+                 if (file) {
+                   toast.info(`已选择文件: ${file.name}`);
+                   // 这里可以添加文件上传逻辑
+                   e.target.value = ''; // 重置文件输入，允许重复上传同一文件
+                 }
+               }}
+             />
+             
+             {/* 语音输入按钮 */}
+             <button 
+               className="text-gray-400 hover:text-blue-600 transition-colors"
+               disabled={isLoading}
+             >
+               <i className="fa-solid fa-microphone"></i>
+             </button>
+             
+             {/* 发送按钮 */}
+             <button 
+               className="text-gray-400 hover:text-blue-600 transition-colors"
+               disabled={isLoading || !input.trim()}
+               onClick={handleSendMessage}
+             >
+               <i className="fa-solid fa-paper-plane"></i>
+             </button>
+           </div>
         </div>
         
 {/* Copyright information */}

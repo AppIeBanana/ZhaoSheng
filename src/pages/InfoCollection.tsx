@@ -104,7 +104,7 @@ const ethnicities = [
 export default function InfoCollection() {
   const navigate = useNavigate();
   const { setStudentData } = useStudentData();
-
+  
   const [formData, setFormData] = useState({
     examType: "",
     studentType: "",
@@ -112,14 +112,14 @@ export default function InfoCollection() {
     ethnicity: "",
     score: ""
   });
-
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
+  
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-
+    
     // Clear error when field is modified
     if (errors[name]) {
       setErrors(prev => {
@@ -129,10 +129,10 @@ export default function InfoCollection() {
       });
     }
   };
-
+  
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
-
+    
     if (!formData.examType) newErrors.examType = "请选择考试类型";
     if (!formData.studentType) newErrors.studentType = "请选择考生类型";
     if (!formData.province) newErrors.province = "请选择生源省份";
@@ -142,22 +142,22 @@ export default function InfoCollection() {
     } else if (isNaN(Number(formData.score)) || Number(formData.score) < 0) {
       newErrors.score = "请输入有效的分数";
     }
-
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
-
+  
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!validateForm()) return;
-
+    
     setIsSubmitting(true);
-
+    
     try {
       // Save form data to context
       setStudentData(formData);
-
+      
       // Navigate to Q&A page
       navigate('/qa');
     } catch (error) {
@@ -167,7 +167,7 @@ export default function InfoCollection() {
       setIsSubmitting(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-8">
       {/* Header */}
@@ -178,7 +178,7 @@ export default function InfoCollection() {
         <h1 className="text-[clamp(1.5rem,5vw,2rem)] font-bold text-gray-800 mb-2">新生信息查询</h1>
         <p className="text-gray-600">请填写以下信息，以便为您提供个性化咨询</p>
       </div>
-
+      
       {/* Form Card */}
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 transform transition-all duration-300 hover:shadow-xl">
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -211,7 +211,7 @@ export default function InfoCollection() {
               <p className="text-red-500 text-xs mt-1">{errors.examType}</p>
             )}
           </div>
-
+          
           {/* Student Type */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">考生类型</label>
@@ -231,7 +231,7 @@ export default function InfoCollection() {
               <p className="text-red-500 text-xs mt-1">{errors.studentType}</p>
             )}
           </div>
-
+          
           {/* Province */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">生源省份</label>
@@ -250,7 +250,7 @@ export default function InfoCollection() {
               <p className="text-red-500 text-xs mt-1">{errors.province}</p>
             )}
           </div>
-
+          
           {/* Ethnicity */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">民族</label>
@@ -269,7 +269,7 @@ export default function InfoCollection() {
               <p className="text-red-500 text-xs mt-1">{errors.ethnicity}</p>
             )}
           </div>
-
+          
           {/* Score */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">分数</label>
@@ -285,15 +285,15 @@ export default function InfoCollection() {
               <p className="text-red-500 text-xs mt-1">{errors.score}</p>
             )}
           </div>
-
+          
           {/* Submit Button */}
           <button
             type="submit"
             disabled={isSubmitting}
             className={`
               w-full rounded-xl py-4 font-medium text-white transition-all transform
-              ${isSubmitting
-                ? 'bg-blue-400 cursor-not-allowed'
+              ${isSubmitting 
+                ? 'bg-blue-400 cursor-not-allowed' 
                 : 'bg-blue-600 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0'}
               flex items-center justify-center
             `}
@@ -312,7 +312,7 @@ export default function InfoCollection() {
           </button>
         </form>
       </div>
-
+      
       {/* Footer */}
       <div className="text-center text-xs text-gray-500">
         <p>本系统信息仅供参考，具体以学校官方发布为准</p>

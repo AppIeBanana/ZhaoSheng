@@ -1,11 +1,3 @@
-# 
-
-项目编号: 7553465555240812834
-
-本项目是由 [网站开发专家](https://space.coze.cn/) 创建.
-
-[**项目地址**](https://space.coze.cn/task/7553465555240812834)
-
 ## 本地开发
 
 ### 环境准备
@@ -27,4 +19,4 @@ pnpm install
 pnpm run dev
 ```
 
-- 在浏览器访问 http://localhost:3000
+- 在浏览器访问 http://localhost:3303

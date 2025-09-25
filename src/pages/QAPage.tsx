@@ -494,14 +494,7 @@ content: `Hi~ 我是福软小X\n非常高兴认识您。您有哪些想咨询的
           />
           {/* 按钮容器 - 使用弹性布局 */}
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-3">
-            {/* 发送按钮 */}
-            <button 
-              className="text-gray-400 hover:text-blue-600 transition-colors"
-              disabled={isLoading || !input.trim()}
-              onClick={handleSendMessage}
-            >
-              <i className="fa-solid fa-paper-plane"></i>
-            </button>
+            
             {/* 文件上传按钮 */}
             <button 
               className="text-gray-400 hover:text-blue-600 transition-colors"
@@ -532,6 +525,15 @@ content: `Hi~ 我是福软小X\n非常高兴认识您。您有哪些想咨询的
               disabled={isLoading}
             >
               <i className="fa-solid fa-microphone"></i>
+            </button>
+            
+            {/* 发送按钮 */}
+            <button 
+              className="text-gray-400 hover:text-blue-600 transition-colors"
+              disabled={isLoading || !input.trim()}
+              onClick={handleSendMessage}
+            >
+              <i className="fa-solid fa-paper-plane"></i>
             </button>
           </div>
         </div>

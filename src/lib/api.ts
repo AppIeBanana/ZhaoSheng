@@ -6,27 +6,36 @@ export interface Message {
 }
 
 // Mock API call to simulate responses
-export async function sendMessageToAPI(message: string, studentData: any): Promise<string> {
-  // Coze API endpoint
-  const apiUrl = 'https://api.coze.cn/v1/workflows/chat';
+export async function* sendMessageToAPIStream(message: string, studentData: any): AsyncGenerator<string> {
+  // Coze API endpoint - updated to v3/chat as per requirements
+  const apiUrl = 'https://api.coze.cn/v3/chat';
   
-  // API authorization token (replace with actual token in production)
-  const authToken = 'pat_*****'; // 注意：在实际部署时替换为真实token
+  // API authorization token (provided by user)
+  const authToken = 'sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU'; // 用户提供的实际token
   
   try {
-    // Prepare request data based on the cURL example provided
+    // Prepare request data based on the new API format provided
     const requestData = {
-      workflow_id: "74423***",  // 替换为实际的workflow_id
-      app_id: "7439828073***",  // 替换为实际的app_id
+      bot_id: "7553550342269550632",
+      workflow_id: "7553548989958930470",
+      user_id: "123456789",
+      stream: true,
       additional_messages: [
         {
-          role: "user",
+          content: message,
           content_type: "text",
-          content: message
+          role: "user",
+          type: "question"
         }
       ],
       parameters: {
-        input: JSON.stringify(studentData)  // 将学生数据作为输入参数
+        // CONVERSATION_NAME: "talk",
+        // USER_INPUT: message,
+        exam_type: studentData.examType,
+        minzu: studentData.ethnicity,
+        province: studentData.province,
+        score: studentData.score,
+        student_type: studentData.studentType
       }
     };
     
@@ -45,29 +54,114 @@ export async function sendMessageToAPI(message: string, studentData: any): Promi
       throw new Error(`API request failed with status: ${response.status}`);
     }
     
-    // Parse response data
-    const responseData = await response.json();
-    
-    // Extract the answer content from response (adjust based on actual API response structure)
-    // This assumes the API returns a structure with content in responseData.data.content
-    if (responseData?.data?.content) {
-      return responseData.data.content;
-    } else {
-      throw new Error('Invalid API response structure');
+    // Check if response is a readable stream
+    if (!response.body) {
+      throw new Error('Response body is not a readable stream');
     }
+    
+    // Get reader from response body
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+    
+    // Read stream chunks until done
+    while (true) {
+      const { done, value } = await reader.read();
+      
+      if (done) {
+        break;
+      }
+      
+      // Decode the chunk and add to buffer
+      buffer += decoder.decode(value, { stream: true });
+      
+      // Handle possible multi-line buffer by splitting on newlines
+      
+      // Process buffer - assuming API returns JSON lines or similar format
+      // This is a simplified parser - adjust based on actual API response format
+      // Split buffer into complete lines, keeping incomplete line in buffer
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      
+        // Parse SSE events correctly by handling both event and data lines
+        let currentEvent = '';
+        let currentData = '';
+        
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+          
+          if (!trimmedLine) {
+            // Empty line indicates end of an event
+            if (currentEvent && currentData) {
+              try {
+                const eventData = JSON.parse(currentData);
+                
+                // Process different event types
+                if ((currentEvent === 'conversation.message.delta' || 
+                    (currentEvent === 'conversation.message.completed' && eventData.type === 'answer'))) {
+                  
+                  // Parse content which is a JSON string
+                  let contentJson;
+                  try {
+                    contentJson = JSON.parse(eventData.content);
+                  } catch (e) {
+                    // If content is not valid JSON, use it as plain text
+                    contentJson = { output: eventData.content };
+                  }
+                  
+                  // Extract the output content
+                  if (contentJson?.output) {
+                    yield contentJson.output;
+                  }
+                } else if (currentEvent === 'error') {
+                  // Handle error events
+                  console.error('API Error:', eventData);
+                  yield `⚠️ 发生错误: ${eventData.msg || '未知错误'}`;
+                }
+              } catch (e) {
+                console.error('Error parsing event:', currentEvent, e);
+              }
+              
+              // Reset for next event
+              currentEvent = '';
+              currentData = '';
+            }
+            continue;
+          }
+          
+          // Handle event line
+          if (trimmedLine.startsWith('event:')) {
+            currentEvent = trimmedLine.replace('event:', '').trim();
+            continue;
+          }
+          
+          // Handle data line
+          if (trimmedLine.startsWith('data:')) {
+            currentData += trimmedLine.replace('data:', '').trim();
+            continue;
+          }
+        }
+    }
+    
+    // Process any remaining data in buffer
+    if (buffer.trim()) {
+      try {
+        const data = JSON.parse(buffer);
+        if (data?.data?.content) {
+          yield data.data.content;
+        }
+      } catch (e) {
+        console.error('Error parsing final stream chunk:', e);
+      }
+    }
+    
   } catch (error) {
     console.error('API request error:', error);
     // Return user-friendly error message
-    return '抱歉，获取回答时出现问题。请稍后重试或联系系统管理员。';
+    yield '抱歉，获取回答时出现问题。请稍后重试或联系系统管理员。';
   }
 }
 
-// Predefined questions for "Guess you want to ask" section
-export const predefinedQuestions = [
-  "我这个分数能考上贵校吗？",
-  "贵校各专业的录取分数线是多少？",
-  "学校的宿舍条件怎么样？",
-  "学校有哪些热门专业？",
-  "毕业后就业情况如何？",
-  "校园生活有什么特色活动？"
-];
+// Original non-streaming version kept for compatibility if needed
+
+

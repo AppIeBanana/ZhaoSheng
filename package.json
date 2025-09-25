@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev:client": "vite --host --port 3100",
+    "dev:client": "vite --host --port 3303",
     "dev": "pnpm dev:client",
     "build:client": "vite build --outDir dist/static",
     "build": "rm -rf dist && pnpm build:client && cp package.json dist && touch dist/build.flag"

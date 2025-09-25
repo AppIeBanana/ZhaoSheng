@@ -1,10 +1,29 @@
-FROM node:lts-alpine
-ENV NODE_ENV=production
-WORKDIR /usr/src/app
-COPY ["package.json", "package-lock.json*", "npm-shrinkwrap.json*", "./"]
-RUN npm install -g pnpm && pnpm install --production --frozen-lockfile
+# Build stage
+FROM node:20-alpine AS build
+
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm && pnpm install
+
+# Copy project files
 COPY . .
-EXPOSE 3303
-RUN chown -R node /usr/src/app
-USER node
-CMD ["pnpm", "start"]
+
+# Build the application
+RUN pnpm run build
+
+# Production stage
+FROM nginx:alpine
+
+# Copy custom nginx config
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copy build files from build stage
+COPY --from=build /app/dist/static /usr/share/nginx/html
+
+# Expose port
+EXPOSE 80
+
+# Start nginx server
+CMD ["nginx", "-g", "daemon off;"]

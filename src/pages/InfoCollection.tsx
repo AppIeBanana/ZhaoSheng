@@ -137,11 +137,10 @@ export default function InfoCollection() {
     if (!formData.studentType) newErrors.studentType = "请选择考生类型";
     if (!formData.province) newErrors.province = "请选择生源省份";
     if (!formData.ethnicity) newErrors.ethnicity = "请选择民族";
-    if (!formData.score) {
-      newErrors.score = "请输入分数";
-    } else if (isNaN(Number(formData.score)) || Number(formData.score) < 0) {
-      newErrors.score = "请输入有效的分数";
-    }
+     // 分数为选填，但如果填写了则验证格式
+     if (formData.score && (isNaN(Number(formData.score)) || Number(formData.score) < 0)) {
+       newErrors.score = "请输入有效的分数";
+     }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -281,9 +280,10 @@ export default function InfoCollection() {
               placeholder="请输入您的考试分数"
               className="w-full rounded-xl border border-gray-300 p-4 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
             />
-            {errors.score && (
-              <p className="text-red-500 text-xs mt-1">{errors.score}</p>
-            )}
+     {/* 分数为选填，移除必填错误提示 */}
+     {errors.score && (
+       <p className="text-red-500 text-xs mt-1">{errors.score}</p>
+     )}
           </div>
           
           {/* Submit Button */}

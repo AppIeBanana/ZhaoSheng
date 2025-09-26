@@ -2,6 +2,7 @@ services:
   web:
     build: .
     ports:
+      - "81:81"
       - "443:443"
     restart: always
     volumes:

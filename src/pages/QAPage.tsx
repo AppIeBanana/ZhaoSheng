@@ -464,15 +464,10 @@ content: `Hi~ 我是福软小X\n非常高兴认识您。您有哪些想咨询的
             ))}
             
             {/* Loading indicator */}
-            {isLoading && (
-              <div className="flex items-start">
-                <img 
-                  src="https://space.coze.cn/api/coze_space/gen_image?image_size=square&prompt=cartoon%20female%20teacher%20avatar%2C%20friendly%20expression%2C%20blue%20background&sign=153bfaa46621c73e80628e542f1f3354" 
-                  alt="AI Assistant" 
-                  className="w-10 h-10 rounded-full mr-2 object-cover flex-shrink-0"
-                />
-              </div>
-            )}
+             {isLoading && (
+               <div className="flex items-start">
+               </div>
+             )}
             
             {/* Scroll anchor */}
             <div ref={messagesEndRef} />

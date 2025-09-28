@@ -27,7 +27,7 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist/static /usr/share/nginx/html
 
 # Expose port
-EXPOSE 81 443
+EXPOSE 82 443
 
 # Start nginx server
 CMD ["nginx", "-g", "daemon off;"]

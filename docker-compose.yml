@@ -6,6 +6,10 @@ services:
       - "443:443"
     restart: always
     volumes:
+      # 挂载 Let's Encrypt 证书目录
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      # 挂载 Certbot 续期目录
+      - /var/www/certbot:/var/www/certbot
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ./ssl:/etc/nginx/ssl
     environment:

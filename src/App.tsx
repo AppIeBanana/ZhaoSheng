@@ -1,15 +1,25 @@
-import { Routes, Route } from "react-router-dom";
-import InfoCollection from "@/pages/InfoCollection";
-import QAPage from "@/pages/QAPage";
+import React from 'react';
+import { createBrowserRouter, RouterProvider, Route } from 'react-router-dom';
+import InfoCollection from '@/pages/InfoCollection';
+import QAPage from '@/pages/QAPage';
 import { StudentProvider } from '@/contexts/studentContext.tsx';
+
+// 使用createBrowserRouter API创建路由配置
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <InfoCollection />,
+  },
+  {
+    path: '/qa',
+    element: <QAPage />,
+  },
+]);
 
 export default function App() {
   return (
     <StudentProvider>
-      <Routes>
-        <Route path="/" element={<InfoCollection />} />
-        <Route path="/qa" element={<QAPage />} />
-      </Routes>
+      <RouterProvider router={router} />
     </StudentProvider>
   );
 }

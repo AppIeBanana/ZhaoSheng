@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useStudentData } from '@/contexts/studentContext.tsx';
 import { Message, sendMessageToAPIStream } from '@/lib/api';
@@ -231,7 +231,7 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
 
 export default function QAPage() {
   const navigate = useNavigate();
-  const { studentData } = useStudentData();
+  const { studentData, setStudentData } = useStudentData();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -278,7 +278,9 @@ export default function QAPage() {
   const getUserIdentifier = () => {
     // 优先使用URL中的对话ID（调试模式）
     if (currentDialogId) {
-      return `dialog_${currentDialogId}`;
+      // 为对话ID添加验证逻辑，防止格式错误
+      const safeDialogId = currentDialogId.replace(/[^a-zA-Z0-9_\-]/g, '');
+      return `dialog_${safeDialogId}`;
     }
     
     // 没有对话ID时，使用之前的逻辑
@@ -294,12 +296,29 @@ export default function QAPage() {
   
   const userId = getUserIdentifier();
 
-// 修改加载学生数据的useEffect
+// 修改加载学生数据和历史消息的useEffect
 useEffect(() => {
-  if (!studentData) {
-    toast.error("请先填写学生信息");
-    navigate('/');
-  } else {
+  // 首先检查是否有对话ID
+  if (currentDialogId) {
+    // 尝试从localStorage加载与该ID关联的学生数据
+    const savedStudentData = localStorage.getItem(`student_data_${currentDialogId}`);
+    
+    if (savedStudentData) {
+        try {
+          const parsedData = JSON.parse(savedStudentData);
+          // 如果上下文没有学生数据，则使用本地存储的数据更新上下文
+          if (!studentData && setStudentData) {
+            setStudentData(parsedData);
+          }
+        } catch (error) {
+          console.error('Failed to parse saved student data:', error);
+          toast.warning('检测到数据格式问题，建议创建新对话');
+        }
+      } else {
+        // 没有找到与对话ID关联的学生数据
+        toast.warning(`未找到与对话ID ${currentDialogId} 关联的学生信息，可能需要重新填写`);
+      }
+    
     // 尝试从本地存储加载历史消息
     const savedMessages = loadMessagesFromLocalStorage(userId);
     
@@ -314,8 +333,27 @@ useEffect(() => {
         timestamp: new Date()
       }]);
     }
+  } else if (!studentData) {
+    // 如果没有对话ID且没有学生数据，则重定向到信息收集页
+    toast.error("请先填写学生信息");
+    navigate('/');
+  } else {
+    // 原有逻辑：有学生数据但没有对话ID
+    const savedMessages = loadMessagesFromLocalStorage(userId);
+    
+    if (savedMessages.length > 0) {
+      setMessages(savedMessages);
+    } else {
+      // 添加欢迎消息
+      setMessages([{
+        id: 'welcome',
+        content: `Hi~ 我是福软小X\n非常高兴认识您。您有哪些想咨询的问题呢？`,
+        sender: 'bot',
+        timestamp: new Date()
+      }]);
+    }
   }
-}, [studentData, navigate, userId]);
+}, [studentData, setStudentData, navigate, userId, currentDialogId]);
 
   // Scroll to bottom when messages update
   useEffect(() => {
@@ -347,13 +385,20 @@ useEffect(() => {
     setIsLoading(true);
     
     try {
+      // 验证studentData是否完整
+      if (!studentData || !studentData.examType || !studentData.province || !studentData.score) {
+        throw new Error('学生信息不完整，请重新填写');
+      }
+      
       // Get streaming bot response，传入userId参数
       const stream = sendMessageToAPIStream(userMessage.content, studentData, userId);
       let fullContent = '';
+      let hasReceivedContent = false;
       
       // Iterate over each chunk in the stream
       for await (const chunk of stream) {
         fullContent += chunk;
+        hasReceivedContent = true;
         
         // Update the bot message with new content
         setMessages(prev => 
@@ -367,12 +412,27 @@ useEffect(() => {
         // Trigger scroll by updating lastUpdatedMessageId
         setLastUpdatedMessageId(botMessageId);
       }
+      
+      // 如果没有接收到实际内容，显示特定的错误信息
+      if (!hasReceivedContent && fullContent.includes('抱歉，获取回答时出现问题')) {
+        throw new Error('API返回了错误响应，可能是临时问题');
+      }
     } catch (error) {
+      // 更详细的错误信息处理
+      let errorMessage = '抱歉，获取回答时出现问题。请稍后重试。';
+      if (error.message.includes('学生信息不完整')) {
+        errorMessage = '学生信息不完整，可能是数据已损坏。请重新创建对话。';
+        toast.error(errorMessage);
+      } else if (currentDialogId) {
+        errorMessage = `当前对话ID(${currentDialogId})可能存在问题。\n建议：1. 尝试生成新的对话ID继续使用\n2. 复制重要聊天记录后重新创建对话`;
+        toast.error('对话可能存在问题，建议创建新对话');
+      }
+      
       // Update message with error information
       setMessages(prev => 
         prev.map(msg => 
           msg.id === botMessageId 
-            ? { ...msg, content: '抱歉，获取回答时出现问题。请稍后重试。' } 
+            ? { ...msg, content: errorMessage } 
             : msg
         )
       );

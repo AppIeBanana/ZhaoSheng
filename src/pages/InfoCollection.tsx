@@ -1,110 +1,115 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+
 import { useStudentData } from '@/contexts/studentContext.tsx';
+// import { useWechatAuthContext } from '@/contexts/wechatAuthContext.tsx';
 import { toast } from 'sonner';
 
 // Province data
 const provinces = [
-  "安徽省",
   "北京市",
-  "重庆市",
-  "福建省",
-  "甘肃省",
-  "广东省",
-  "广西壮族自治区",
-  "贵州省",
-  "海南省",
+  "天津市",
   "河北省",
-  "河南省",
+  "山西省",
+  "内蒙古自治区",
+  "辽宁省",
+  "吉林省",
   "黑龙江省",
+  "上海市",
+  "江苏省",
+  "浙江省",
+  "安徽省",
+  "福建省",
+  "江西省",
+  "山东省",
+  "河南省",
   "湖北省",
   "湖南省",
-  "吉林省",
-  "江苏省",
-  "江西省",
-  "辽宁省",
-  "内蒙古自治区",
-  "宁夏回族自治区",
-  "青海省",
-  "山东省",
-  "山西省",
-  "陕西省",
-  "上海市",
+  "广东省",
+  "广西壮族自治区",
+  "海南省",
+  "重庆市",
   "四川省",
-  "天津市",
-  "台湾省",
-  "西藏自治区",
-  "香港特别行政区",
-  "新疆维吾尔自治区",
+  "贵州省",
   "云南省",
-  "浙江省",
+  "西藏自治区",
+  "陕西省",
+  "甘肃省",
+  "青海省",
+  "宁夏回族自治区",
+  "新疆维吾尔自治区",
+  "台湾省",
+  "香港特别行政区",
   "澳门特别行政区"
 ];
 
 // Ethnicity data (partial list for example)
 const ethnicities = [
   "汉族",
-  "壮族",
-  "维吾尔族",
-  "回族",
-  "彝族",
-  "苗族",
-  "满族",
-  "土家族",
-  "藏族",
   "蒙古族",
+  "回族",
+  "藏族",
+  "维吾尔族",
+  "苗族",
+  "彝族",
+  "壮族",
+  "布衣族",
+  "朝鲜族",
+  "满族",
   "侗族",
-  "布依族",
   "瑶族",
   "白族",
-  "朝鲜族",
+  "土家族",
   "哈尼族",
-  "黎族",
   "哈萨克族",
   "傣族",
-  "畲族",
+  "黎族",
   "傈僳族",
-  "东乡族",
-  "仡佬族",
-  "拉祜族",
   "佤族",
+  "畲族",
+  "高山族",
+  "拉祜族",
   "水族",
+  "东乡族",
   "纳西族",
-  "羌族",
-  "土族",
-  "仫佬族",
-  "柯尔克孜族",
-  "锡伯族",
-  "达斡尔族",
   "景颇族",
-  "毛南族",
-  "撒拉族",
+  "柯尔克孜族",
+  "土族",
+  "达斡尔族",
+  "仫佬族",
+  "羌族",
   "布朗族",
-  "塔吉克族",
+  "撒拉族",
+  "毛南族",
+  "仡佬族",
+  "锡伯族",
   "阿昌族",
   "普米族",
-  "鄂温克族",
+  "塔吉克族",
   "怒族",
-  "京族",
-  "基诺族",
+  "乌孜别克族",
+  "俄罗斯族",
+  "鄂温克族",
   "德昂族",
   "保安族",
-  "俄罗斯族",
   "裕固族",
-  "乌孜别克族",
-  "门巴族",
-  "鄂伦春族",
+  "京族",
+  "塔塔尔族",
   "独龙族",
+  "鄂伦春族",
   "赫哲族",
-  "高山族",
+  "门巴族",
   "珞巴族",
-  "塔塔尔族"
+  "基诺族",
 ];
 
 export default function InfoCollection() {
   const navigate = useNavigate();
   const { setStudentData } = useStudentData();
   const [searchParams, setSearchParams] = useSearchParams();
+
+  // const { isAuthenticated } = useWechatAuthContext();
+
   
   const [formData, setFormData] = useState({
     examType: "",
@@ -168,6 +173,26 @@ export default function InfoCollection() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // 添加搜索关键词状态
+  const [provinceSearchTerm, setProvinceSearchTerm] = useState("");
+  // 省份下拉框展开状态
+  const [isProvinceDropdownOpen, setIsProvinceDropdownOpen] = useState(false);
+  
+  // 检查是否已有学生信息，如果有则直接跳转到问答页面
+  // useEffect(() => {
+  //   if (isAuthenticated) {
+  //     const savedStudentData = localStorage.getItem('studentData');
+  //     if (savedStudentData) {
+  //       try {
+  //         const parsedData = JSON.parse(savedStudentData);
+  //         setStudentData(parsedData);
+  //         navigate('/qa');
+  //       } catch (error) {
+  //         console.error('加载保存的学生信息失败:', error);
+  //       }
+  //     }
+  //   }
+  // }, [isAuthenticated, navigate, setStudentData]);
   
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -182,6 +207,28 @@ export default function InfoCollection() {
       });
     }
   };
+  
+  // 处理省份选择
+  const handleProvinceSelect = (province: string) => {
+    setFormData(prev => ({ ...prev, province }));
+    setIsProvinceDropdownOpen(false);
+    
+    // Clear error when province is selected
+    if (errors.province) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.province;
+        return newErrors;
+      });
+    }
+  };
+  
+  // 过滤省份列表
+  const filteredProvinces = provinceSearchTerm
+    ? provinces.filter(province => 
+        province.includes(provinceSearchTerm)
+      )
+    : provinces;
   
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -210,6 +257,7 @@ export default function InfoCollection() {
       // Save form data to context
       setStudentData(formData);
       
+
       // 生成新的对话ID
       const newDialogId = `dialog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
@@ -218,6 +266,7 @@ export default function InfoCollection() {
       
       // Navigate to Q&A page with the new dialog ID
       navigate({ pathname: '/qa', search: `dialogId=${newDialogId}` });
+
     } catch (error) {
       toast.error("提交失败，请重试");
       console.error("Form submission error:", error);
@@ -322,20 +371,63 @@ export default function InfoCollection() {
             )}
           </div>
           
-          {/* Province */}
+          {/* Province with Search and Dropdown */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">生源省份</label>
-            <select
-              name="province"
-              value={formData.province}
-              onChange={handleChange}
-              className="w-full rounded-xl border border-gray-300 p-4 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-            >
-              <option value="">请选择生源省份</option>
-              {provinces.map(province => (
-                <option key={province} value={province}>{province}</option>
-              ))}
-            </select>
+            <div className="relative">
+              {/* Province Input */}
+              <div 
+                className={`
+                  w-full rounded-xl border border-gray-300 p-4 text-gray-700 cursor-pointer
+                  ${formData.province ? 'text-blue-600' : 'text-gray-400'}
+                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all
+                `}
+                onClick={() => setIsProvinceDropdownOpen(!isProvinceDropdownOpen)}
+              >
+                {formData.province || "请选择生源省份"}
+                <i className={`fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform ${isProvinceDropdownOpen ? 'rotate-180' : ''}`}></i>
+              </div>
+              
+              {/* Dropdown with Search */}
+              {isProvinceDropdownOpen && (
+                <div className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 z-10 max-h-60 overflow-y-auto">
+                  {/* Search Input */}
+                  <div className="p-3 border-b border-gray-200">
+                    <input
+                      type="text"
+                      placeholder="搜索省份..."
+                      value={provinceSearchTerm}
+                      onChange={(e) => setProvinceSearchTerm(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 p-2 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                  
+                  {/* Filtered Province List */}
+                  <div className="p-1">
+                    {filteredProvinces.length > 0 ? (
+                      filteredProvinces.map(province => (
+                        <div
+                          key={province}
+                          className={`
+                            block w-full text-left px-4 py-2 rounded-lg transition-colors
+                            ${formData.province === province 
+                              ? 'bg-blue-50 text-blue-600' 
+                              : 'hover:bg-gray-100 text-gray-700'}
+                          `}
+                          onClick={() => handleProvinceSelect(province)}
+                        >
+                          {province}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        没有找到匹配的省份
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             {errors.province && (
               <p className="text-red-500 text-xs mt-1">{errors.province}</p>
             )}

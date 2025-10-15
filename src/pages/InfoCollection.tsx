@@ -175,8 +175,10 @@ export default function InfoCollection() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   // 添加搜索关键词状态
   const [provinceSearchTerm, setProvinceSearchTerm] = useState("");
-  // 省份下拉框展开状态
+  const [ethnicitySearchTerm, setEthnicitySearchTerm] = useState("");
+  // 下拉框展开状态
   const [isProvinceDropdownOpen, setIsProvinceDropdownOpen] = useState(false);
+  const [isEthnicityDropdownOpen, setIsEthnicityDropdownOpen] = useState(false);
   
   // 检查是否已有学生信息，如果有则直接跳转到问答页面
   // useEffect(() => {
@@ -223,12 +225,34 @@ export default function InfoCollection() {
     }
   };
   
+  // 处理民族选择
+  const handleEthnicitySelect = (ethnicity: string) => {
+    setFormData(prev => ({ ...prev, ethnicity }));
+    setIsEthnicityDropdownOpen(false);
+    
+    // Clear error when ethnicity is selected
+    if (errors.ethnicity) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors.ethnicity;
+        return newErrors;
+      });
+    }
+  };
+  
   // 过滤省份列表
   const filteredProvinces = provinceSearchTerm
     ? provinces.filter(province => 
         province.includes(provinceSearchTerm)
       )
     : provinces;
+  
+  // 过滤民族列表
+  const filteredEthnicities = ethnicitySearchTerm
+    ? ethnicities.filter(ethnicity => 
+        ethnicity.includes(ethnicitySearchTerm)
+      )
+    : ethnicities;
   
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -433,20 +457,63 @@ export default function InfoCollection() {
             )}
           </div>
           
-          {/* Ethnicity */}
+          {/* Ethnicity with Search and Dropdown */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">民族</label>
-            <select
-              name="ethnicity"
-              value={formData.ethnicity}
-              onChange={handleChange}
-              className="w-full rounded-xl border border-gray-300 p-4 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-            >
-              <option value="">请选择民族</option>
-              {ethnicities.map(ethnicity => (
-                <option key={ethnicity} value={ethnicity}>{ethnicity}</option>
-              ))}
-            </select>
+            <div className="relative">
+              {/* Ethnicity Input */}
+              <div 
+                className={`
+                  w-full rounded-xl border border-gray-300 p-4 text-gray-700 cursor-pointer
+                  ${formData.ethnicity ? 'text-blue-600' : 'text-gray-400'}
+                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all
+                `}
+                onClick={() => setIsEthnicityDropdownOpen(!isEthnicityDropdownOpen)}
+              >
+                {formData.ethnicity || "请选择民族"}
+                <i className={`fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform ${isEthnicityDropdownOpen ? 'rotate-180' : ''}`}></i>
+              </div>
+              
+              {/* Dropdown with Search */}
+              {isEthnicityDropdownOpen && (
+                <div className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 z-10 max-h-60 overflow-y-auto">
+                  {/* Search Input */}
+                  <div className="p-3 border-b border-gray-200">
+                    <input
+                      type="text"
+                      placeholder="搜索民族..."
+                      value={ethnicitySearchTerm}
+                      onChange={(e) => setEthnicitySearchTerm(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 p-2 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    />
+                  </div>
+                  
+                  {/* Filtered Ethnicity List */}
+                  <div className="p-1">
+                    {filteredEthnicities.length > 0 ? (
+                      filteredEthnicities.map(ethnicity => (
+                        <div
+                          key={ethnicity}
+                          className={`
+                            block w-full text-left px-4 py-2 rounded-lg transition-colors
+                            ${formData.ethnicity === ethnicity 
+                              ? 'bg-blue-50 text-blue-600' 
+                              : 'hover:bg-gray-100 text-gray-700'}
+                          `}
+                          onClick={() => handleEthnicitySelect(ethnicity)}
+                        >
+                          {ethnicity}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">
+                        没有找到匹配的民族
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             {errors.ethnicity && (
               <p className="text-red-500 text-xs mt-1">{errors.ethnicity}</p>
             )}

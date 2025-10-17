@@ -1,0 +1,134 @@
+// 微信服务器验证的后端处理文件
+// 注意：此文件使用Node.js内置模块实现，无需安装额外依赖
+import http from 'http';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { URL, URLSearchParams } from 'url';
+import { Readable } from 'stream';
+
+const port = 80;
+
+// 尝试从配置文件导入微信验证Token
+let wechatToken = 'zhaosheng2024'; // 默认值，与config.ts保持一致
+
+try {
+  // 检查是否存在配置文件
+  const configPath = path.join(process.cwd(), 'src', 'lib', 'config.ts');
+  
+  if (fs.existsSync(configPath)) {
+    // 读取配置文件内容
+    const configContent = fs.readFileSync(configPath, 'utf8');
+    // 简单的正则匹配TOKEN值
+    const tokenMatch = configContent.match(/TOKEN:\s*['"]([\w\d]+)['"]/);
+    if (tokenMatch && tokenMatch[1]) {
+      wechatToken = tokenMatch[1];
+      console.log('从配置文件读取到微信验证Token:', wechatToken);
+    }
+  }
+} catch (error) {
+  console.warn('无法读取配置文件，使用默认Token:', wechatToken, error.message);
+}
+
+// 微信验证工具类
+class WechatVerify {
+  static verify(signature, timestamp, nonce, echostr) {
+    try {
+      // 1. 将token、timestamp、nonce三个参数进行字典序排序
+      const arr = [wechatToken, timestamp, nonce];
+      arr.sort();
+      
+      // 2. 将三个参数字符串拼接成一个字符串进行sha1加密
+      const str = arr.join('');
+      const hash = crypto.createHash('sha1');
+      hash.update(str);
+      const result = hash.digest('hex');
+      
+      // 3. 开发者获得加密后的字符串可与signature对比，标识该请求来源于微信
+      if (result === signature) {
+        return echostr;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('微信服务器验证失败:', error);
+      return null;
+    }
+  }
+}
+
+// 创建HTTP服务器
+const server = http.createServer((req, res) => {
+  const parsedUrl = new URL(req.url, `http://${req.headers.host}`);
+  const pathname = parsedUrl.pathname;
+  
+  // 处理微信验证和消息推送
+  if (pathname === '/wechat') {
+    if (req.method === 'GET') {
+      // 微信服务器验证请求
+      const { signature, timestamp, nonce, echostr } = Object.fromEntries(parsedUrl.searchParams);
+      
+      console.log('收到微信服务器验证请求:', {
+        signature,
+        timestamp,
+        nonce,
+        echostr
+      });
+      
+      // 验证请求
+      const verifiedEchostr = WechatVerify.verify(
+        signature,
+        timestamp,
+        nonce,
+        echostr
+      );
+      
+      if (verifiedEchostr) {
+        console.log('微信服务器验证成功');
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end(verifiedEchostr);
+      } else {
+        console.log('微信服务器验证失败');
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('验证失败');
+      }
+    } else if (req.method === 'POST') {
+      // 微信消息推送
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk;
+      });
+      req.on('end', () => {
+        console.log('收到微信消息推送:', body);
+        
+        // 返回success响应
+        res.writeHead(200, { 'Content-Type': 'application/xml' });
+        res.end('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
+      });
+    }
+  } else {
+    // 简单的静态文件服务和404处理
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+  }
+});
+
+// 启动服务器
+server.listen(port, () => {
+  console.log(`微信服务器验证服务运行在 http://localhost:${port}`);
+  console.log(`微信验证Token: ${wechatToken}`);
+  console.log('\n请将以下信息配置到微信公众平台:');
+  console.log('1. 填写服务器配置:');
+  console.log('   - 服务器地址(URL): http://your-domain.com/wechat');
+  console.log(`   - Token: ${wechatToken}`);
+  console.log('   - 消息加解密方式: 明文模式');
+  console.log('   - 编码格式: UTF-8');
+  console.log('\n2. 验证服务器地址的有效性:');
+  console.log('   - 配置完成后点击"提交"按钮');
+  console.log('   - 微信服务器会发送GET请求到您的服务器地址');
+  console.log('   - 本服务会自动验证请求并返回正确的echostr');
+  console.log('\n3. 配置完成后:');
+  console.log('   - 您的服务器将能够接收微信用户消息');
+  console.log('   - 可以通过POST /wechat端点处理微信消息推送');
+  console.log('   - 确保服务器24小时在线以接收微信消息');
+});

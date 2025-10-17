@@ -44,9 +44,22 @@ class WechatVerify {
       hash.update(str);
       const result = hash.digest('hex');
       
+      // 打印验证信息，便于调试
+      console.log('微信验证详情:');
+      console.log('  - 收到的signature:', signature);
+      console.log('  - 计算出的signature:', result);
+      console.log('  - token:', wechatToken);
+      console.log('  - timestamp:', timestamp);
+      console.log('  - nonce:', nonce);
+      console.log('  - 排序后的数组:', arr);
+      console.log('  - 拼接后的字符串:', str);
+      
       // 3. 开发者获得加密后的字符串可与signature对比，标识该请求来源于微信
       if (result === signature) {
+        console.log('✓ signature验证成功');
         return echostr;
+      } else {
+        console.log('✗ signature验证失败');
       }
       
       return null;
@@ -54,6 +67,29 @@ class WechatVerify {
       console.error('微信服务器验证失败:', error);
       return null;
     }
+  }
+  
+  // 生成测试用的signature（用于本地测试）
+  static generateTestSignature(timestamp = null, nonce = null) {
+    // 如果没有提供timestamp或nonce，生成默认值
+    const ts = timestamp || Date.now().toString();
+    const nc = nonce || Math.random().toString(36).substr(2, 9);
+    
+    // 按微信算法生成signature
+    const arr = [wechatToken, ts, nc];
+    arr.sort();
+    const str = arr.join('');
+    const hash = crypto.createHash('sha1');
+    hash.update(str);
+    const signature = hash.digest('hex');
+    
+    console.log('生成测试用signature:');
+    console.log('  - 生成的signature:', signature);
+    console.log('  - timestamp:', ts);
+    console.log('  - nonce:', nc);
+    console.log('  - 测试URL: http://localhost:80/wechat?signature=' + signature + '&timestamp=' + ts + '&nonce=' + nc + '&echostr=test_echo');
+    
+    return { signature, timestamp: ts, nonce: nc };
   }
 }
 
@@ -117,7 +153,19 @@ const server = http.createServer((req, res) => {
 server.listen(port, () => {
   console.log(`微信服务器验证服务运行在 http://localhost:${port}`);
   console.log(`微信验证Token: ${wechatToken}`);
-  console.log('\n请将以下信息配置到微信公众平台:');
+  
+  // 生成测试用的signature和URL
+  console.log('\n=== 本地测试信息 ===');
+  console.log('微信使用的签名加密算法：');
+  console.log('1. 将token、timestamp、nonce三个参数按字典序排序');
+  console.log('2. 将排序后的三个参数拼接成一个字符串');
+  console.log('3. 对拼接后的字符串进行SHA1加密');
+  console.log('4. 将加密后的字符串作为signature参数');
+  
+  console.log('\n生成的测试URL（已包含正确的signature）:');
+  const testData = WechatVerify.generateTestSignature();
+  
+  console.log('\n=== 微信公众平台配置信息 ===');
   console.log('1. 填写服务器配置:');
   console.log('   - 服务器地址(URL): http://your-domain.com/wechat');
   console.log(`   - Token: ${wechatToken}`);

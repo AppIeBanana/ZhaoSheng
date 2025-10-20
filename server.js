@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import { URL, URLSearchParams } from 'url';
 import { Readable } from 'stream';
 
-const port = 80;
+const port = 443;
 
 // 尝试从配置文件导入微信验证Token
 let wechatToken = 'zhaosheng2024'; // 默认值，与config.ts保持一致

@@ -219,7 +219,7 @@ useEffect(() => {
     } catch (error) {
       // 更详细的错误信息处理
       let errorMessage = '抱歉，获取回答时出现问题。请稍后重试。';
-      if (error.message.includes('学生信息不完整')) {
+      if (error instanceof Error && error.message.includes('学生信息不完整')) {
         errorMessage = '学生信息不完整，可能是数据已损坏。请重新创建对话。';
         toast.error(errorMessage);
       } else if (currentDialogId) {

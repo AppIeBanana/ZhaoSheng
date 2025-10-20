@@ -16,7 +16,7 @@ pipeline {
                                 makeEmptyDirs: false, 
                                 noDefaultExcludes: false, 
                                 patternSeparator: '[, ]+', 
-                                remoteDirectory: '/ZhaoSheng-build', 
+                                remoteDirectory: '/ZhaoSheng-build/', 
                                 remoteDirectorySDF: false, 
                                 removePrefix: 'dist/static', 
                                 sourceFiles: 'dist/static/**'
@@ -41,13 +41,13 @@ pipeline {
                                 makeEmptyDirs: false, 
                                 noDefaultExcludes: false, 
                                 patternSeparator: '[, ]+', 
-                                remoteDirectory: '/ZhaoSheng-build', 
+                                remoteDirectory: '/ZhaoSheng-build/', 
                                 remoteDirectorySDF: false, 
                                 removePrefix: '', 
                                 sourceFiles: 'nginx.conf'
                             )
                         ],
-                        execCommand: 'cd /ZhaoSheng-build && docker build -t zhaosheng. && docker run -d -p 82:82 -p 443:443 zhaosheng'
+                        execCommand: 'cd /ZhaoSheng/build && docker build -t zhaosheng-web. && docker run -d -p 82:82 -p 443:443 zhaosheng-web'
                     )
                 ])
             }

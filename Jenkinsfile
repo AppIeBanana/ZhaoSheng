@@ -16,7 +16,7 @@ pipeline {
                                 makeEmptyDirs: false, 
                                 noDefaultExcludes: false, 
                                 patternSeparator: '[, ]+', 
-                                remoteDirectory: '/ZhaoSheng-build/', 
+                                remoteDirectory: '/ZhaoSheng/build/', 
                                 remoteDirectorySDF: false, 
                                 removePrefix: 'dist/static', 
                                 sourceFiles: 'dist/static/**'
@@ -41,7 +41,7 @@ pipeline {
                                 makeEmptyDirs: false, 
                                 noDefaultExcludes: false, 
                                 patternSeparator: '[, ]+', 
-                                remoteDirectory: '/ZhaoSheng-build/', 
+                                remoteDirectory: '/ZhaoSheng/build/', 
                                 remoteDirectorySDF: false, 
                                 removePrefix: '', 
                                 sourceFiles: 'nginx.conf'

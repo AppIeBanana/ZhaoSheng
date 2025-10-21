@@ -29,7 +29,7 @@ pipeline {
                     extensions: [],
                     submoduleCfg: [],
                     userRemoteConfigs: [[
-                        url: '您的GitLab仓库URL',
+                        url: 'http://172.21.9.233:18080/Wanzhong/zhaosheng.git',
                         credentialsId: 'gitlab-credentials' // 在Jenkins中配置的GitLab凭证ID
                     ]]
                 ])

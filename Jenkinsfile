@@ -46,22 +46,13 @@ pipeline {
             steps {
                 script {
                     echo '安装项目依赖...'
-                    // 检查是否安装了pnpm，如果没有则安装
+                    // 使用npm安装依赖，避免Node版本兼容性问题
                     sh '''
-                        # 检查pnpm是否安装（服务器已确认安装）
-                        if ! command -v pnpm &> /dev/null; then
-                            echo 'pnpm not found, installing...'
-                            npm install -g pnpm
-                        else
-                            echo 'pnpm already installed'
-                        fi
-                        
                         # 使用淘宝镜像加速下载
                         npm config set registry https://registry.npmmirror.com
-                        pnpm config set registry https://registry.npmmirror.com
                         
-                        # 安装项目依赖（使用已安装的pnpm）
-                        pnpm install
+                        # 安装项目依赖
+                        npm install
                     '''
                 }
             }
@@ -86,7 +77,7 @@ pipeline {
             steps {
                 script {
                     echo '构建项目...'
-                    sh 'pnpm run build'
+                    sh 'npm run build'
                 }
             }
         }

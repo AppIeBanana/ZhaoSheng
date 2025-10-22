@@ -94,12 +94,6 @@ pipeline {
         
         // 阶段5: 构建Docker镜像
         stage('Build Docker Image') {
-            agent {
-                docker {
-                    image 'nginx:stable-alpine3.21-perl',
-                    image 'node:25-alpine3.21'
-                }
-            }
             steps {
                 script {
                     // 权限诊断步骤
@@ -112,8 +106,8 @@ pipeline {
                     
                     // 检查本地是否存在所需的基础镜像
                     echo '检查本地Docker镜像...'
-                    sh 'docker images | grep node:25-alpine3.21 || echo "node:25-alpine3.21镜像可能不存在，将尝试使用本地缓存"'
-                    sh 'docker images | grep nginx:stable-alpine3.21-perl || echo "nginx:stable-alpine3.21-perl镜像可能不存在，将尝试使用本地缓存"'
+                    sh 'docker images | grep -E "^node\s+lts-alpine3.22" || echo "node:25-alpine3.21镜像可能不存在，将尝试使用本地缓存"'
+                    sh 'docker images | grep -E "^nginx\s+stable-alpine3.21-perl" || echo "nginx:stable-alpine3.21-perl镜像可能不存在，将尝试使用本地缓存"'
                     
                     // 添加网络配置处理连接问题
                     echo '构建Docker镜像，使用本地基础镜像...'

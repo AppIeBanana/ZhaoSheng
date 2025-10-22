@@ -23,10 +23,10 @@ pipeline {
         // 阶段1: 拉取代码
         stage('Checkout Code') {
             steps {
-                echo "从 ${GITLAB_REPO} 拉取 ${params.BRANCH} 分支代码"
+                echo '从 ${GITLAB_REPO} 拉取 ${params.BRANCH} 分支代码'
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "*/${params.BRANCH}"]],
+                    branches: [[name: '*/${params.BRANCH}']],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [
                         [$class: 'CleanBeforeCheckout'],
@@ -34,8 +34,8 @@ pipeline {
                     ],
                     submoduleCfg: [],
                     userRemoteConfigs: [[
-                        url: "${GITLAB_REPO}"
-                        // 移除credentialsId配置，尝试匿名访问
+                        url: '${GITLAB_REPO}',
+                        credentialsId: '741bbcae-2cc0-44e1-b0aa-fb0e579a0354' // 在Jenkins中配置的GitLab凭证ID
                     ]]
                 ])
             }

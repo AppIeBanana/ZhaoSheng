@@ -104,9 +104,15 @@ pipeline {
                     sh 'ls -la /var/run/docker.sock || echo "Docker socket not found"'
                     sh 'docker info || echo "Docker info command failed"'
                     
+                    // 检查本地是否存在所需的基础镜像
+                    echo '检查本地Docker镜像...'
+                    sh 'docker images | grep node:25-alpine3.21 || echo "node:25-alpine3.21镜像可能不存在，将尝试使用本地缓存"'
+                    sh 'docker images | grep nginx:stable-alpine3.21-perl || echo "nginx:stable-alpine3.21-perl镜像可能不存在，将尝试使用本地缓存"'
+                    
                     // 添加网络配置处理连接问题
-                    echo '构建Docker镜像，添加网络配置优化...'
-                    // 添加--network=host以使用主机网络配置，--pull=false避免每次拉取
+                    echo '构建Docker镜像，使用本地基础镜像...'
+                    // --pull=false 确保Docker不尝试拉取镜像，优先使用本地镜像
+                    // --network=host 使用主机网络配置
                     sh 'docker build --network=host --pull=false -t ${DOCKER_IMAGE_NAME}:latest .'
                 }
             }

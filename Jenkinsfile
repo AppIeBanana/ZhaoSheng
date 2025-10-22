@@ -50,7 +50,7 @@ pipeline {
                     sh '''
                         if ! command -v pnpm &> /dev/null; then
                             echo 'pnpm not found, installing...'
-                            npm install -g pnpm
+                            sudo npm install -g pnpm
                         else
                             echo 'pnpm already installed'
                         fi
@@ -60,7 +60,7 @@ pipeline {
                         pnpm config set registry https://registry.npmmirror.com
                         
                         # 安装项目依赖
-                        pnpm install
+                        sudo pnpm install
                     '''
                 }
             }
@@ -72,7 +72,7 @@ pipeline {
                 script {
                     echo '执行代码质量检查...'
                     // TypeScript类型检查
-                    sh 'npx tsc --noEmit'
+                    sh 'sudo npx tsc --noEmit'
                     
                     // 如果有测试，可以启用
                     // sh 'pnpm test'
@@ -85,7 +85,7 @@ pipeline {
             steps {
                 script {
                     echo '构建项目...'
-                    sh 'pnpm run build'
+                    sh 'sudo pnpm run build'
                 }
             }
         }
@@ -96,8 +96,8 @@ pipeline {
                 script {
                     echo '构建Docker镜像: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}'
                     // 构建Docker镜像
-                    sh 'docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
-                    sh 'docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
+                    sh 'sudo docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
+                    sh 'sudo docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
                 }
             }
         }
@@ -111,7 +111,7 @@ pipeline {
                 script {
                     echo '部署到服务器 ${DEPLOY_SERVER}:${DEPLOY_PATH}'
                     // 将Docker镜像导出为tar文件
-                    sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
+                    sh 'sudo docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'deploy-server-credentials', keyFileVariable: 'SSH_KEY')]) {
@@ -137,15 +137,15 @@ pipeline {
                                  
                                 # 停止并移除旧容器
                                 echo '停止并移除旧容器...'
-                                docker-compose down || true
+                                sudo docker-compose down || true
                                 
                                 # 加载新镜像
                                 echo '加载新镜像...'
-                                docker load -i ${DOCKER_IMAGE_NAME}.tar
+                                sudo docker load -i ${DOCKER_IMAGE_NAME}.tar
                                 
                                 # 启动新容器
                                 echo '启动新容器...'
-                                docker-compose up -d
+                                sudo docker-compose up -d
                                 
                                 # 等待容器启动
                                 echo '等待容器启动...'
@@ -153,11 +153,11 @@ pipeline {
                                 
                                 # 检查容器状态
                                 echo '检查容器状态...'
-                                docker ps -f 'name=${DOCKER_CONTAINER_NAME}'
+                                sudo docker ps -f 'name=${DOCKER_CONTAINER_NAME}'
                                 
                                 # 清理旧镜像
                                 echo '清理旧镜像...'
-                                docker system prune -f
+                                sudo docker system prune -f
                                 
                                 # 验证部署
                                 CONTAINER_RUNNING=$(docker ps | grep -c '${DOCKER_CONTAINER_NAME}')
@@ -172,7 +172,7 @@ pipeline {
                     }
                     
                     // 清理本地临时文件
-                    sh 'rm -f ${DOCKER_IMAGE_NAME}.tar'
+                    sh 'sudo rm -f ${DOCKER_IMAGE_NAME}.tar'
                 }
             }
         }

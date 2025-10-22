@@ -104,18 +104,16 @@ pipeline {
                     sh 'ls -la /var/run/docker.sock || echo "Docker socket not found"'
                     sh 'docker info || echo "Docker info command failed"'
                     
-                    echo '构建Docker镜像: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}'
+                    echo '构建Docker镜像: ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 尝试直接构建（首选方法）
                     try {
-                        sh 'docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
-                        sh 'docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
+                        sh 'docker build -t ${DOCKER_IMAGE_NAME}:latest .'
                         echo 'Docker构建成功，无需特殊权限处理'
                     } catch (Exception e) {
                         // 如果失败，尝试使用sudo（备选方法）
                         echo '直接构建失败，尝试使用sudo...'
-                        sh 'sudo docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
-                        sh 'sudo docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
+                        sh 'sudo docker build -t ${DOCKER_IMAGE_NAME}:latest .'
                     }
                 }
             }
@@ -129,7 +127,7 @@ pipeline {
             steps {
                 script {
                     echo '部署到服务器 ${DEPLOY_SERVER}:${DEPLOY_PATH}'
-                    // 将Docker镜像导出为tar文件
+                    // 将Docker镜像导出为tar文件（使用固定的latest标签）
                     sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器

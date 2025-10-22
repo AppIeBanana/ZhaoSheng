@@ -94,6 +94,12 @@ pipeline {
         
         // 阶段5: 构建Docker镜像
         stage('Build Docker Image') {
+            agent {
+                docker {
+                    image 'nginx:stable-alpine3.21-perl',
+                    image 'node:25-alpine3.21'
+                }
+            }
             steps {
                 script {
                     // 权限诊断步骤

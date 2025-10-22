@@ -104,10 +104,8 @@ pipeline {
                     sh 'ls -la /var/run/docker.sock || echo "Docker socket not found"'
                     sh 'docker info || echo "Docker info command failed"'
                     
-                    echo '构建Docker镜像: ${DOCKER_IMAGE_NAME}:latest'
-                    
-                    // 使用直接构建方式，添加网络配置处理连接问题
-                    echo '使用直接构建方式，添加网络配置处理连接问题...'
+                    // 添加网络配置处理连接问题
+                    echo '构建Docker镜像，添加网络配置优化...'
                     // 添加--network=host以使用主机网络配置，--pull=false避免每次拉取
                     sh 'docker build --network=host --pull=false -t ${DOCKER_IMAGE_NAME}:latest .'
                 }

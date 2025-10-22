@@ -106,14 +106,16 @@ pipeline {
                     
                     echo '构建Docker镜像: ${DOCKER_IMAGE_NAME}:latest'
                     
-                    // 尝试直接构建（首选方法）
+                    // 尝试直接构建（首选方法），添加重试机制处理网络超时
                     try {
-                        sh 'docker build -t ${DOCKER_IMAGE_NAME}:latest .'
+                        echo '使用直接构建方式，添加重试机制处理网络连接问题...'
+                        // 添加--network=host以使用主机网络配置，--pull=false避免每次拉取
+                        sh 'docker build --network=host --pull=false --timeout=300 -t ${DOCKER_IMAGE_NAME}:latest .'
                         echo 'Docker构建成功，无需特殊权限处理'
                     } catch (Exception e) {
                         // 如果失败，尝试使用sudo（备选方法）
                         echo '直接构建失败，尝试使用sudo...'
-                        sh 'sudo docker build -t ${DOCKER_IMAGE_NAME}:latest .'
+                        sh 'sudo docker build --network=host --pull=false --timeout=300 -t ${DOCKER_IMAGE_NAME}:latest .'
                     }
                 }
             }

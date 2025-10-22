@@ -1,32 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useStudentData } from '@/contexts/studentContext.tsx';
 import { Message, sendMessageToAPIStream } from '@/lib/api';
 import { toast } from 'sonner';
 import { questionCategories, questionsByCategory, getRandomQuestions } from '@/data/questionsData';
-
-// 在QAPage.tsx中添加本地存储功能
-const saveMessagesToLocalStorage = (userId: string, messages: Message[]) => {
-  localStorage.setItem(`chat_history_${userId}`, JSON.stringify({
-    messages: messages.map(msg => ({ ...msg, timestamp: msg.timestamp.toISOString() })),
-    lastUpdated: new Date().toISOString()
-  }));
-};
-
-const loadMessagesFromLocalStorage = (userId: string): Message[] => {
-  const saved = localStorage.getItem(`chat_history_${userId}`);
-  if (!saved) return [];
-  try {
-    const data = JSON.parse(saved);
-    return data.messages.map((msg: any) => ({
-      ...msg,
-      timestamp: new Date(msg.timestamp)
-    }));
-  } catch (e) {
-    console.error('Failed to load chat history:', e);
-    return [];
-  }
-};
 
 export default function QAPage() {
   const navigate = useNavigate();

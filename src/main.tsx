@@ -1,5 +1,6 @@
 
-import React, { StrictMode } from "react";
+// 移除未使用的React导入
+import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { Toaster } from 'sonner';
 import App from "./App.tsx";

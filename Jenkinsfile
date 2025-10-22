@@ -97,19 +97,18 @@ pipeline {
             steps {
                 script {
                     // 权限诊断步骤
-                    echo 'Docker权限诊断...'
-                    sh 'whoami'  // 显示当前执行Jenkins流水线的用户名
-                    sh 'id'
-                    sh 'groups'
-                    sh 'ls -la /var/run/docker.sock || echo "Docker socket not found"'
-                    sh 'docker info || echo "Docker info command failed"'
+                    // echo 'Docker权限诊断...'
+                    // sh 'id'
+                    // sh 'groups'
+                    // sh 'ls -la /var/run/docker.sock || echo "Docker socket not found"'
+                    // sh 'docker info || echo "Docker info command failed"'
                     
                     // 检查本地是否存在所需的基础镜像
                     echo '检查本地Docker镜像...'
-                    sh 'docker images | grep -E "^node[[:space:]]+lts-alpine3.22" || echo "node:lts-alpine3.22镜像可能不存在，将尝试使用本地缓存"'
-                    sh 'docker pull node:lts-alpine3.22'
-                    sh 'docker images | grep -E "^nginx[[:space:]]+stable-alpine3.21-perl" || echo "nginx:stable-alpine3.21-perl镜像可能不存在，将尝试使用本地缓存"'
-                    sh 'docker pull nginx:stable-alpine3.21-perl'
+                    sh '''docker images | grep -E "^nginx\s+stable-alpine3.21-perl" || echo "node:lts-alpine3.22镜像可能不存在，将尝试使用本地缓存"'''
+                    // sh 'docker pull node:lts-alpine3.22'
+                    sh '''docker images | grep -E "^nginx\s+stable-alpine3.21-perl" || echo "nginx:stable-alpine3.21-perl镜像可能不存在，将尝试使用本地缓存"'''
+                    // sh 'docker pull nginx:stable-alpine3.21-perl'
                     // 添加网络配置处理连接问题
                     echo '构建Docker镜像，使用本地基础镜像...'
                     // --pull=false 确保Docker不尝试拉取镜像，优先使用本地镜像

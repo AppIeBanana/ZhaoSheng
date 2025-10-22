@@ -1,15 +1,16 @@
-// Jenkinsfile for React TypeScript Project CI/CD Pipeline
+// Jenkinsfile for 招生前端开发项目 CI/CD Pipeline
 pipeline {
     agent any
     
     // 环境变量定义
     environment {
         // Docker相关配置
-        DOCKER_IMAGE_NAME = "fzrjxy-zhaosheng-chatbot"
-        DOCKER_CONTAINER_NAME = "fzrjxy-zhaosheng-chatbot"
+        DOCKER_IMAGE_NAME = "zhaosheng-web"
+        DOCKER_CONTAINER_NAME = "zhaosheng-web"
         // 部署服务器配置
         DEPLOY_SERVER = "175.42.63.9"
-        DEPLOY_PATH = "/path/to/deployment"
+        DEPLOY_PATH = "/projects/ZhaoSheng"
+        GITLAB_REPO = "http://172.21.9.233:18080/Wanzhong/zhaosheng.git"
     }
     
     // 构建参数，可在Jenkins界面手动触发时修改
@@ -22,14 +23,18 @@ pipeline {
         // 阶段1: 拉取代码
         stage('Checkout Code') {
             steps {
+                echo "从 ${GITLAB_REPO} 拉取 ${params.BRANCH} 分支代码"
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: "*/${params.BRANCH}"]],
                     doGenerateSubmoduleConfigurations: false,
-                    extensions: [],
+                    extensions: [
+                        [$class: 'CleanBeforeCheckout'],
+                        [$class: 'PruneStaleBranch']
+                    ],
                     submoduleCfg: [],
                     userRemoteConfigs: [[
-                        url: 'http://172.21.9.233:18080/Wanzhong/zhaosheng.git',
+                        url: "${GITLAB_REPO}",
                         credentialsId: 'gitlab-credentials' // 在Jenkins中配置的GitLab凭证ID
                     ]]
                 ])
@@ -40,35 +45,36 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
+                    echo "安装项目依赖..."
                     // 检查是否安装了pnpm，如果没有则安装
                     sh '''
-                        if ! command -v pnpm &> /dev/null
-                        then
+                        if ! command -v pnpm &> /dev/null; then
                             echo "pnpm not found, installing..."
                             npm install -g pnpm
                         else
                             echo "pnpm already installed"
                         fi
                         
-                        // 使用淘宝镜像加速下载
+                        # 使用淘宝镜像加速下载
                         npm config set registry https://registry.npmmirror.com
                         pnpm config set registry https://registry.npmmirror.com
                         
-                        // 安装项目依赖
+                        # 安装项目依赖
                         pnpm install
                     '''
                 }
             }
         }
         
-        // 阶段3: 代码质量检查和测试
-        stage('Code Quality & Test') {
+        // 阶段3: 代码质量检查
+        stage('Code Quality') {
             steps {
                 script {
-                    // 可以根据项目需求添加TypeScript类型检查、ESLint等
+                    echo "执行代码质量检查..."
+                    // TypeScript类型检查
                     sh 'npx tsc --noEmit'
                     
-                    // 如果有测试，取消下面的注释
+                    // 如果有测试，可以启用
                     // sh 'pnpm test'
                 }
             }
@@ -78,6 +84,7 @@ pipeline {
         stage('Build Project') {
             steps {
                 script {
+                    echo "构建项目..."
                     sh 'pnpm run build'
                 }
             }
@@ -87,6 +94,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
+                    echo "构建Docker镜像: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
                     // 构建Docker镜像
                     sh "docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ."
                     sh "docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest"
@@ -101,38 +109,64 @@ pipeline {
             }
             steps {
                 script {
+                    echo "部署到服务器 ${DEPLOY_SERVER}:${DEPLOY_PATH}"
                     // 将Docker镜像导出为tar文件
                     sh "docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest"
                     
-                    // 使用SSH将tar文件和docker-compose.yml复制到部署服务器
+                    // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'deploy-server-credentials', keyFileVariable: 'SSH_KEY')]) {
+                        // 确保部署目录存在
+                        sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} 'mkdir -p ${DEPLOY_PATH}'"
+                        
                         // 复制Docker镜像
+                        echo "复制Docker镜像到服务器..."
                         sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${DEPLOY_SERVER}:${DEPLOY_PATH}"
                         
-                        // 复制docker-compose.yml文件
+                        // 复制必要的配置文件
+                        echo "复制配置文件到服务器..."
                         sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${DEPLOY_SERVER}:${DEPLOY_PATH}"
-                        
-                        // 复制nginx.conf文件
                         sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no nginx.conf ${DEPLOY_SERVER}:${DEPLOY_PATH}"
                         
                         // 在部署服务器上加载镜像并启动服务
+                        echo "在服务器上部署应用..."
                         sh """
                             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} << 'EOF'
-                                # 停止并移除旧容器
+                                echo "开始部署应用..."
+                                # 进入部署目录
                                 cd ${DEPLOY_PATH}
+                                
+                                # 停止并移除旧容器
+                                echo "停止并移除旧容器..."
                                 docker-compose down || true
                                 
                                 # 加载新镜像
+                                echo "加载新镜像..."
                                 docker load -i ${DOCKER_IMAGE_NAME}.tar
                                 
                                 # 启动新容器
+                                echo "启动新容器..."
                                 docker-compose up -d
                                 
+                                # 等待容器启动
+                                echo "等待容器启动..."
+                                sleep 5
+                                
+                                # 检查容器状态
+                                echo "检查容器状态..."
+                                docker ps | grep ${DOCKER_CONTAINER_NAME}
+                                
                                 # 清理旧镜像
+                                echo "清理旧镜像..."
                                 docker system prune -f
                                 
-                                # 重启nginx以确保配置生效
-                                docker exec -it ${DOCKER_CONTAINER_NAME} nginx -s reload || true
+                                # 验证部署
+                                CONTAINER_RUNNING=$(docker ps | grep -c "${DOCKER_CONTAINER_NAME}")
+                                if [ "$CONTAINER_RUNNING" -eq 1 ]; then
+                                    echo "部署成功! ${DOCKER_CONTAINER_NAME} 容器正在运行"
+                                else
+                                    echo "部署失败! ${DOCKER_CONTAINER_NAME} 容器未正常启动"
+                                    exit 1
+                                fi
                             EOF
                         """
                     }
@@ -148,13 +182,14 @@ pipeline {
     post {
         // 构建成功时
         success {
-            echo '构建成功！'
+            echo '构建和部署成功！'
+            echo "应用已成功部署到 http://${DEPLOY_SERVER}:${DEPLOY_PATH}"
             // 可以添加通知，例如发送邮件或Slack消息
         }
         
         // 构建失败时
         failure {
-            echo '构建失败！'
+            echo '构建或部署失败！'
             // 可以添加失败通知
         }
         

@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# SSH keys and private files
+plk741023
+plk741023.pub

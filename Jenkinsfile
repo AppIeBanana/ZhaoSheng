@@ -153,7 +153,7 @@ pipeline {
                                 
                                 # 检查容器状态
                                 echo "检查容器状态..."
-                                docker ps | grep '${DOCKER_CONTAINER_NAME}'
+                                docker ps | grep ${DOCKER_CONTAINER_NAME}
                                 
                                 # 清理旧镜像
                                 echo "清理旧镜像..."

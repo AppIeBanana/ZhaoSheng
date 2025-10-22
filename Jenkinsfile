@@ -48,19 +48,12 @@ pipeline {
                     echo '安装项目依赖...'
                     // 检查是否安装了pnpm，如果没有则安装
                     sh '''
-                        if ! command -v pnpm &> /dev/null; then
-                            echo 'pnpm not found, installing...'
-                            sudo npm install -g pnpm
-                        else
-                            echo 'pnpm already installed'
-                        fi
-                        
                         # 使用淘宝镜像加速下载
                         npm config set registry https://registry.npmmirror.com
-                        pnpm config set registry https://registry.npmmirror.com
                         
-                        # 安装项目依赖
-                        sudo pnpm install
+                        # 直接使用npx执行pnpm来避免全局安装和sudo需求
+                        echo '使用npx pnpm安装项目依赖...'
+                        npx pnpm install
                     '''
                 }
             }
@@ -72,7 +65,7 @@ pipeline {
                 script {
                     echo '执行代码质量检查...'
                     // TypeScript类型检查
-                    sh 'sudo npx tsc --noEmit'
+                    sh 'npx tsc --noEmit'
                     
                     // 如果有测试，可以启用
                     // sh 'pnpm test'
@@ -85,7 +78,7 @@ pipeline {
             steps {
                 script {
                     echo '构建项目...'
-                    sh 'sudo pnpm run build'
+                    sh 'npx pnpm run build'
                 }
             }
         }
@@ -95,9 +88,9 @@ pipeline {
             steps {
                 script {
                     echo '构建Docker镜像: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}'
-                    // 构建Docker镜像
-                    sh 'sudo docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
-                    sh 'sudo docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
+                    // 构建Docker镜像 - 假设Jenkins用户已添加到docker组
+                    sh 'docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
+                    sh 'docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
                 }
             }
         }
@@ -111,7 +104,7 @@ pipeline {
                 script {
                     echo '部署到服务器 ${DEPLOY_SERVER}:${DEPLOY_PATH}'
                     // 将Docker镜像导出为tar文件
-                    sh 'sudo docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
+                    sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'deploy-server-credentials', keyFileVariable: 'SSH_KEY')]) {
@@ -137,15 +130,15 @@ pipeline {
                                  
                                 # 停止并移除旧容器
                                 echo '停止并移除旧容器...'
-                                sudo docker-compose down || true
+                                docker-compose down || true
                                 
                                 # 加载新镜像
                                 echo '加载新镜像...'
-                                sudo docker load -i ${DOCKER_IMAGE_NAME}.tar
+                                docker load -i ${DOCKER_IMAGE_NAME}.tar
                                 
                                 # 启动新容器
                                 echo '启动新容器...'
-                                sudo docker-compose up -d
+                                docker-compose up -d
                                 
                                 # 等待容器启动
                                 echo '等待容器启动...'
@@ -153,11 +146,11 @@ pipeline {
                                 
                                 # 检查容器状态
                                 echo '检查容器状态...'
-                                sudo docker ps -f 'name=${DOCKER_CONTAINER_NAME}'
+                                docker ps -f 'name=${DOCKER_CONTAINER_NAME}'
                                 
                                 # 清理旧镜像
                                 echo '清理旧镜像...'
-                                sudo docker system prune -f
+                                docker system prune -f
                                 
                                 # 验证部署
                                 CONTAINER_RUNNING=$(docker ps | grep -c '${DOCKER_CONTAINER_NAME}')
@@ -172,7 +165,7 @@ pipeline {
                     }
                     
                     // 清理本地临时文件
-                    sh 'sudo rm -f ${DOCKER_IMAGE_NAME}.tar'
+                    sh 'rm -f ${DOCKER_IMAGE_NAME}.tar'
                 }
             }
         }

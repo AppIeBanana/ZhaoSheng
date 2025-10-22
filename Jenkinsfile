@@ -48,12 +48,20 @@ pipeline {
                     echo '安装项目依赖...'
                     // 检查是否安装了pnpm，如果没有则安装
                     sh '''
+                        # 检查pnpm是否安装（服务器已确认安装）
+                        if ! command -v pnpm &> /dev/null; then
+                            echo 'pnpm not found, installing...'
+                            npm install -g pnpm
+                        else
+                            echo 'pnpm already installed'
+                        fi
+                        
                         # 使用淘宝镜像加速下载
                         npm config set registry https://registry.npmmirror.com
+                        pnpm config set registry https://registry.npmmirror.com
                         
-                        # 直接使用npx执行pnpm来避免全局安装和sudo需求
-                        echo '使用npx pnpm安装项目依赖...'
-                        npx pnpm install
+                        # 安装项目依赖（使用已安装的pnpm）
+                        pnpm install
                     '''
                 }
             }
@@ -78,7 +86,7 @@ pipeline {
             steps {
                 script {
                     echo '构建项目...'
-                    sh 'npx pnpm run build'
+                    sh 'pnpm run build'
                 }
             }
         }
@@ -88,7 +96,7 @@ pipeline {
             steps {
                 script {
                     echo '构建Docker镜像: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}'
-                    // 构建Docker镜像 - 假设Jenkins用户已添加到docker组
+                    // 构建Docker镜像
                     sh 'docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
                     sh 'docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
                 }

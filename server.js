@@ -12,23 +12,23 @@ const port = 443;
 // 尝试从配置文件导入微信验证Token
 let wechatToken = 'zhaosheng2024'; // 默认值，与config.ts保持一致
 
-try {
-  // 检查是否存在配置文件
-  const configPath = path.join(process.cwd(), 'src', 'lib', 'config.ts');
+// try {
+//   // 检查是否存在配置文件
+//   const configPath = path.join(process.cwd(), 'src', 'lib', 'config.ts');
 
-  if (fs.existsSync(configPath)) {
-    // 读取配置文件内容
-    const configContent = fs.readFileSync(configPath, 'utf8');
-    // 简单的正则匹配TOKEN值
-    const tokenMatch = configContent.match(/TOKEN:\s*['"]([\w\d]+)['"]/);
-    if (tokenMatch && tokenMatch[1]) {
-      wechatToken = tokenMatch[1];
-      console.log('从配置文件读取到微信验证Token:', wechatToken);
-    }
-  }
-} catch (error) {
-  console.warn('无法读取配置文件，使用默认Token:', wechatToken, error.message);
-}
+//   if (fs.existsSync(configPath)) {
+//     // 读取配置文件内容
+//     const configContent = fs.readFileSync(configPath, 'utf8');
+//     // 简单的正则匹配TOKEN值
+//     const tokenMatch = configContent.match(/TOKEN:\s*['"]([\w\d]+)['"]/);
+//     if (tokenMatch && tokenMatch[1]) {
+//       wechatToken = tokenMatch[1];
+//       console.log('从配置文件读取到微信验证Token:', wechatToken);
+//     }
+//   }
+// } catch (error) {
+//   console.warn('无法读取配置文件，使用默认Token:', wechatToken, error.message);
+// }
 
 // 微信验证工具类
 class WechatVerify {
@@ -93,13 +93,9 @@ class WechatVerify {
   }
 }
 
-// SSL证书配置 - 基于nginx.conf中的证书路径
-const privateKeyPath = process.env.NODE_ENV === 'production'
-  ? '/etc/letsencrypt/live/zswd.fzrjxy.com/privkey.pem' // 生产环境私钥路径
-  : path.join(process.cwd(), 'plk741023'); // 本地开发私钥文件
-const certificatePath = process.env.NODE_ENV === 'production'
-  ? '/etc/letsencrypt/live/zswd.fzrjxy.com/fullchain.pem' // 生产环境证书路径
-  : path.join(process.cwd(), 'plk741023.pub'); // 本地开发证书文件
+// SSL证书配置 - 仅使用生产环境证书路径 (仅支持HTTPS)
+const privateKeyPath = '/etc/letsencrypt/live/zswd.fzrjxy.com/privkey.pem'; // 私钥路径
+const certificatePath = '/etc/letsencrypt/live/zswd.fzrjxy.com/fullchain.pem'; // 证书路径
 
 // 检查证书文件是否存在
 if (!fs.existsSync(privateKeyPath) || !fs.existsSync(certificatePath)) {
@@ -147,13 +143,16 @@ try {
     console.error(`错误详情:`, error);
   }
 
-  // 在生产环境中，证书加载失败应该导致程序退出
+  // 无论环境如何，证书加载失败都应提示用户，但只在生产环境中强制退出
+  console.error('=== SSL证书加载失败 ===');
+  console.error(`请确保证书文件存在且有权限访问: ${privateKeyPath} 和 ${certificatePath}`);
+  
   if (process.env.NODE_ENV === 'production') {
     console.error('在生产环境中，证书加载失败将导致程序退出');
     process.exit(1);
   } else {
     console.warn('警告: 在开发环境中，证书加载失败可能导致服务器无法正常启动');
-    console.warn('请确保提供有效的SSL证书，或者修改代码使用HTTP进行开发测试');
+    console.warn('请确保提供有效的SSL证书，或在开发环境中修改代码使用测试证书路径');
   }
 }
 
@@ -162,55 +161,76 @@ let server;
 if (credentials) {
   console.log('创建HTTPS服务器...');
   server = https.createServer(credentials, (req, res) => {
+    const startTime = Date.now();
     const parsedUrl = new URL(req.url, `https://${req.headers.host}`);
     const pathname = parsedUrl.pathname;
+    
+    // 记录所有接收到的请求
+    console.log(`=== 收到请求 ===`);
+    console.log(`时间: ${new Date().toISOString()}`);
+    console.log(`方法: ${req.method}`);
+    console.log(`路径: ${pathname}`);
+    console.log(`请求URL: ${req.url}`);
+    console.log(`客户端IP: ${req.socket.remoteAddress}`);
+    
+    // 重写res.writeHead方法以记录响应状态码
+    const originalWriteHead = res.writeHead;
+    res.writeHead = function(statusCode, headers) {
+      const processingTime = Date.now() - startTime;
+      console.log(`=== 响应信息 ===`);
+      console.log(`状态码: ${statusCode}`);
+      console.log(`处理时间: ${processingTime}ms`);
+      return originalWriteHead.apply(this, arguments);
+    };
 
-    // 处理微信验证和消息推送
-    if (pathname === '/wechat') {
-      if (req.method === 'GET') {
-        // 微信服务器验证请求
-        const { signature, timestamp, nonce, echostr } = Object.fromEntries(parsedUrl.searchParams);
+    // 处理微信验证和消息推送 - 支持根路径和/wechat路径
+    const isWechatPath = pathname === '/wechat' || pathname === '/';
+    
+    if (isWechatPath && req.method === 'GET') {
+      // 微信服务器验证请求（支持根路径）
+      const { signature, timestamp, nonce, echostr } = Object.fromEntries(parsedUrl.searchParams);
 
-        console.log('收到微信服务器验证请求:', {
-          signature,
-          timestamp,
-          nonce,
-          echostr
-        });
+      console.log('收到微信服务器验证请求:', {
+        signature,
+        timestamp,
+        nonce,
+        echostr,
+        path: pathname
+      });
 
-        // 验证请求
-        const verifiedEchostr = WechatVerify.verify(
-          signature,
-          timestamp,
-          nonce,
-          echostr
-        );
+      // 验证请求
+      const verifiedEchostr = WechatVerify.verify(
+        signature,
+        timestamp,
+        nonce,
+        echostr
+      );
 
-        if (verifiedEchostr) {
-          console.log('微信服务器验证成功');
-          res.writeHead(200, { 'Content-Type': 'text/plain' });
-          res.end(verifiedEchostr);
-        } else {
-          console.log('微信服务器验证失败');
-          res.writeHead(403, { 'Content-Type': 'text/plain' });
-          res.end('验证失败');
-        }
-      } else if (req.method === 'POST') {
-        // 微信消息推送
-        let body = '';
-        req.on('data', chunk => {
-          body += chunk;
-        });
-        req.on('end', () => {
-          console.log('收到微信消息推送:', body);
-
-          // 返回success响应
-          res.writeHead(200, { 'Content-Type': 'application/xml' });
-          res.end('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
-        });
+      if (verifiedEchostr) {
+        console.log('微信服务器验证成功，返回200状态码');
+        res.writeHead(200, { 'Content-Type': 'text/plain' });
+        res.end(verifiedEchostr);
+      } else {
+        console.log('微信服务器验证失败，返回403状态码');
+        res.writeHead(403, { 'Content-Type': 'text/plain' });
+        res.end('验证失败');
       }
+    } else if (isWechatPath && req.method === 'POST') {
+      // 微信消息推送
+      let body = '';
+      req.on('data', chunk => {
+        body += chunk;
+      });
+      req.on('end', () => {
+        console.log('收到微信消息推送:', body);
+
+        // 返回success响应
+        res.writeHead(200, { 'Content-Type': 'application/xml' });
+        res.end('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
+      });
     } else {
       // 简单的静态文件服务和404处理
+      console.log(`路径 ${pathname} 不存在，返回404`);
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not Found');
     }
@@ -225,14 +245,28 @@ if (credentials) {
   }
 }
 
-// 启动服务器
+// 启动服务器 - 注意：此服务仅支持HTTPS，监听443端口
 try {
+  if (!server) {
+    console.error('=== 服务器启动失败 ===');
+    console.error('原因: SSL凭证未正确加载，无法创建HTTPS服务器');
+    console.error('请检查证书文件是否存在且格式正确:', privateKeyPath, certificatePath);
+    
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('在开发环境中，您可以修改server.js中的证书路径以使用测试证书');
+    }
+    
+    process.exit(1);
+  }
+  
   server.listen(port, () => {
     console.log(`=== 微信服务器验证服务启动成功 ===`);
     console.log(`监听端口: ${port}`);
+    console.log(`服务类型: HTTPS  (仅支持HTTPS)`);
     console.log(`服务地址: https://localhost:${port}`);
     console.log(`生产地址: https://zswd.fzrjxy.com`);
-    console.log(`微信验证路径: /wechat`);
+    console.log(`微信验证路径: / 和 /wechat`);
+    console.log(`(支持在根路径和/wechat路径进行微信服务器验证)`);
     console.log(`微信验证Token: ${wechatToken}`);
     console.log(`运行环境: ${process.env.NODE_ENV || 'development'}`);
 
@@ -300,9 +334,10 @@ try {
   process.exit(1);
 }
 
-console.log('\n=== 微信公众平台配置信息 ===');
+console.log('=== 微信公众平台配置信息 ===');
 console.log('1. 填写服务器配置:');
-console.log('   - 服务器地址(URL): https://zswd.fzrjxy.com/wechat');
+console.log('   - 服务器地址(URL): https://zswd.fzrjxy.com/  或  https://zswd.fzrjxy.com/wechat');
+console.log('   - 注意: 建议使用根路径(/)以匹配微信服务器的请求模式');
 console.log(`   - Token: ${wechatToken}`);
 console.log('   - 消息加解密方式: 明文模式');
 console.log('   - 编码格式: UTF-8');

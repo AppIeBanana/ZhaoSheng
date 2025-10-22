@@ -34,8 +34,8 @@ pipeline {
                     ],
                     submoduleCfg: [],
                     userRemoteConfigs: [[
-                        url: "${GITLAB_REPO}",
-                        credentialsId: 'git-credentials' // 使用Jenkins中已配置的Git凭证ID
+                        url: "${GITLAB_REPO}"
+                        // 移除credentialsId配置，尝试匿名访问
                     ]]
                 ])
             }

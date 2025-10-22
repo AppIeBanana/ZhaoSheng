@@ -2,6 +2,11 @@
 pipeline {
     agent any
     
+    // 工具定义，用于指定NodeJS版本
+    tools {
+        nodejs 'NodeJS-16' // 使用在Jenkins中配置的NodeJS工具名称，可根据实际情况修改
+    }
+    
     // 环境变量定义
     environment {
         // Docker相关配置
@@ -46,7 +51,9 @@ pipeline {
             steps {
                 script {
                     echo '安装项目依赖...'
-                    // 使用npm安装依赖，避免Node版本兼容性问题
+                    // 显示当前使用的Node和npm版本
+                    sh 'node -v && npm -v'
+                    // 使用npm安装依赖
                     sh '''
                         # 使用淘宝镜像加速下载
                         npm config set registry https://registry.npmmirror.com

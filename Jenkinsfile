@@ -106,14 +106,14 @@ pipeline {
                     
                     echo '构建Docker镜像: ${DOCKER_IMAGE_NAME}:latest'
                     
-                    // 尝试直接构建（首选方法），并挂载docker.sock和docker二进制文件
+                    // 尝试直接构建（首选方法）
                     try {
-                        sh 'docker build -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker -t ${DOCKER_IMAGE_NAME}:latest .'
+                        sh 'docker build -t ${DOCKER_IMAGE_NAME}:latest .'
                         echo 'Docker构建成功，无需特殊权限处理'
                     } catch (Exception e) {
                         // 如果失败，尝试使用sudo（备选方法）
                         echo '直接构建失败，尝试使用sudo...'
-                        sh 'sudo docker build -v /var/run/docker.sock:/var/run/docker.sock -v /usr/bin/docker:/usr/bin/docker -t ${DOCKER_IMAGE_NAME}:latest .'
+                        sh 'sudo docker build -t ${DOCKER_IMAGE_NAME}:latest .'
                     }
                 }
             }

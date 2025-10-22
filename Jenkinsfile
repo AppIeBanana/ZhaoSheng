@@ -53,13 +53,16 @@ pipeline {
                     echo '安装项目依赖...'
                     // 显示当前使用的Node和npm版本
                     sh 'node -v && npm -v'
-                    // 使用npm安装依赖
+                    // 安装pnpm并使用pnpm安装依赖
                     sh '''
+                        # 安装pnpm
+                        npm install -g pnpm
+                        
                         # 使用淘宝镜像加速下载
-                        npm config set registry https://registry.npmmirror.com
+                        pnpm config set registry https://registry.npmmirror.com
                         
                         # 安装项目依赖
-                        npm install
+                        pnpm install
                     '''
                 }
             }
@@ -84,7 +87,7 @@ pipeline {
             steps {
                 script {
                     echo '构建项目...'
-                    sh 'npm run build'
+                    sh 'pnpm run build'
                 }
             }
         }

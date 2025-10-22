@@ -5,12 +5,12 @@ pipeline {
     // 环境变量定义
     environment {
         // Docker相关配置
-        DOCKER_IMAGE_NAME = "zhaosheng-web"
-        DOCKER_CONTAINER_NAME = "zhaosheng-web"
+        DOCKER_IMAGE_NAME = 'zhaosheng-web'
+        DOCKER_CONTAINER_NAME = 'zhaosheng-web'
         // 部署服务器配置
-        DEPLOY_SERVER = "175.42.63.9"
-        DEPLOY_PATH = "/projects/ZhaoSheng"
-        GITLAB_REPO = "http://172.21.9.233:18080/Wanzhong/zhaosheng.git"
+        DEPLOY_SERVER = '175.42.63.9'
+        DEPLOY_PATH = '/projects/ZhaoSheng'
+        GITLAB_REPO = 'http://172.21.9.233:18080/Wanzhong/zhaosheng.git'
     }
     
     // 构建参数，可在Jenkins界面手动触发时修改
@@ -23,10 +23,10 @@ pipeline {
         // 阶段1: 拉取代码
         stage('Checkout Code') {
             steps {
-                echo "从 ${GITLAB_REPO} 拉取 ${params.BRANCH} 分支代码"
+                echo '从 ${GITLAB_REPO} 拉取 ${params.BRANCH} 分支代码'
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "*/${params.BRANCH}"]],
+                    branches: [[name: '*/${params.BRANCH}']],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [
                         [$class: 'CleanBeforeCheckout'],
@@ -34,7 +34,7 @@ pipeline {
                     ],
                     submoduleCfg: [],
                     userRemoteConfigs: [[
-                        url: "${GITLAB_REPO}",
+                        url: '${GITLAB_REPO}',
                         credentialsId: 'gitlab-credentials' // 在Jenkins中配置的GitLab凭证ID
                     ]]
                 ])
@@ -45,14 +45,14 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 script {
-                    echo "安装项目依赖..."
+                    echo '安装项目依赖...'
                     // 检查是否安装了pnpm，如果没有则安装
                     sh '''
                         if ! command -v pnpm &> /dev/null; then
-                            echo "pnpm not found, installing..."
+                            echo 'pnpm not found, installing...'
                             npm install -g pnpm
                         else
-                            echo "pnpm already installed"
+                            echo 'pnpm already installed'
                         fi
                         
                         # 使用淘宝镜像加速下载
@@ -70,7 +70,7 @@ pipeline {
         stage('Code Quality') {
             steps {
                 script {
-                    echo "执行代码质量检查..."
+                    echo '执行代码质量检查...'
                     // TypeScript类型检查
                     sh 'npx tsc --noEmit'
                     
@@ -84,7 +84,7 @@ pipeline {
         stage('Build Project') {
             steps {
                 script {
-                    echo "构建项目..."
+                    echo '构建项目...'
                     sh 'pnpm run build'
                 }
             }
@@ -94,10 +94,10 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    echo "构建Docker镜像: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}"
+                    echo '构建Docker镜像: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}'
                     // 构建Docker镜像
-                    sh "docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ."
-                    sh "docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest"
+                    sh 'docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
+                    sh 'docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
                 }
             }
         }
@@ -109,62 +109,62 @@ pipeline {
             }
             steps {
                 script {
-                    echo "部署到服务器 ${DEPLOY_SERVER}:${DEPLOY_PATH}"
+                    echo '部署到服务器 ${DEPLOY_SERVER}:${DEPLOY_PATH}'
                     // 将Docker镜像导出为tar文件
-                    sh "docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest"
+                    sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'deploy-server-credentials', keyFileVariable: 'SSH_KEY')]) {
                         // 确保部署目录存在
-                        sh "ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} 'mkdir -p ${DEPLOY_PATH}'"
+                        sh 'ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} \'mkdir -p ${DEPLOY_PATH}\''
                         
                         // 复制Docker镜像
-                        echo "复制Docker镜像到服务器..."
-                        sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${DEPLOY_SERVER}:${DEPLOY_PATH}"
+                        echo '复制Docker镜像到服务器...'
+                        sh 'scp -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${DEPLOY_SERVER}:${DEPLOY_PATH}'
                         
                         // 复制必要的配置文件
-                        echo "复制配置文件到服务器..."
-                        sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${DEPLOY_SERVER}:${DEPLOY_PATH}"
-                        sh "scp -i ${SSH_KEY} -o StrictHostKeyChecking=no nginx.conf ${DEPLOY_SERVER}:${DEPLOY_PATH}"
+                        echo '复制配置文件到服务器...'
+                        sh 'scp -i ${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${DEPLOY_SERVER}:${DEPLOY_PATH}'
+                        sh 'scp -i ${SSH_KEY} -o StrictHostKeyChecking=no nginx.conf ${DEPLOY_SERVER}:${DEPLOY_PATH}'
                         
                         // 在部署服务器上加载镜像并启动服务
-                        echo "在服务器上部署应用..."
+                        echo '在服务器上部署应用...'
                         sh """
                             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} << 'EOF'
-                                echo "开始部署应用..."
+                                echo '开始部署应用...'
                                 # 进入部署目录
                                 cd ${DEPLOY_PATH}
-                                
+                                 
                                 # 停止并移除旧容器
-                                echo "停止并移除旧容器..."
+                                echo '停止并移除旧容器...'
                                 docker-compose down || true
                                 
                                 # 加载新镜像
-                                echo "加载新镜像..."
+                                echo '加载新镜像...'
                                 docker load -i ${DOCKER_IMAGE_NAME}.tar
                                 
                                 # 启动新容器
-                                echo "启动新容器..."
+                                echo '启动新容器...'
                                 docker-compose up -d
                                 
                                 # 等待容器启动
-                                echo "等待容器启动..."
+                                echo '等待容器启动...'
                                 sleep 5
                                 
                                 # 检查容器状态
-                                echo "检查容器状态..."
-                                docker ps -f "name=${DOCKER_CONTAINER_NAME}"
+                                echo '检查容器状态...'
+                                docker ps -f 'name=${DOCKER_CONTAINER_NAME}'
                                 
                                 # 清理旧镜像
-                                echo "清理旧镜像..."
+                                echo '清理旧镜像...'
                                 docker system prune -f
                                 
                                 # 验证部署
-                                CONTAINER_RUNNING=$(docker ps | grep -c ${DOCKER_CONTAINER_NAME})
-                                if [ "$CONTAINER_RUNNING" -eq 1 ]; then
-                                    echo "部署成功! ${DOCKER_CONTAINER_NAME} 容器正在运行"
+                                CONTAINER_RUNNING=$(docker ps | grep -c '${DOCKER_CONTAINER_NAME}')
+                                if [ '$CONTAINER_RUNNING' -eq 1 ]; then
+                                    echo '部署成功! ${DOCKER_CONTAINER_NAME} 容器正在运行'
                                 else
-                                    echo "部署失败! ${DOCKER_CONTAINER_NAME} 容器未正常启动"
+                                    echo '部署失败! ${DOCKER_CONTAINER_NAME} 容器未正常启动'
                                     exit 1
                                 fi
                             EOF
@@ -172,7 +172,7 @@ pipeline {
                     }
                     
                     // 清理本地临时文件
-                    sh "rm -f ${DOCKER_IMAGE_NAME}.tar"
+                    sh 'rm -f ${DOCKER_IMAGE_NAME}.tar'
                 }
             }
         }
@@ -183,7 +183,7 @@ pipeline {
         // 构建成功时
         success {
             echo '构建和部署成功！'
-            echo "应用已成功部署到 http://${DEPLOY_SERVER}:${DEPLOY_PATH}"
+            echo '应用已成功部署到 http://${DEPLOY_SERVER}:${DEPLOY_PATH}'
             // 可以添加通知，例如发送邮件或Slack消息
         }
         

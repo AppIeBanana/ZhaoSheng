@@ -48,19 +48,11 @@ pipeline {
                     echo '安装项目依赖...'
                     // 检查是否安装了pnpm，如果没有则安装
                     sh '''
-                        if ! command -v pnpm &> /dev/null; then
-                            echo 'pnpm not found, installing...'
-                            npm install -g pnpm
-                        else
-                            echo 'pnpm already installed'
-                        fi
-                        
                         # 使用淘宝镜像加速下载
                         npm config set registry https://registry.npmmirror.com
-                        pnpm config set registry https://registry.npmmirror.com
                         
                         # 安装项目依赖
-                        pnpm install
+                        npm install
                     '''
                 }
             }

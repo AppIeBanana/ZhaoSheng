@@ -4,7 +4,7 @@ pipeline {
     
     // 工具定义，用于指定NodeJS版本
     tools {
-        nodejs 'NodeJS-16' // 使用在Jenkins中配置的NodeJS工具名称，可根据实际情况修改
+        nodejs 'NodeJS 22.20.0' // 使用在Jenkins中已配置的NodeJS工具名称
     }
     
     // 环境变量定义

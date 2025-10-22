@@ -153,18 +153,18 @@ pipeline {
                                 
                                 # 检查容器状态
                                 echo "检查容器状态..."
-                                docker ps | grep ${DOCKER_CONTAINER_NAME}
+                                docker ps -f "name=${DOCKER_CONTAINER_NAME}"
                                 
                                 # 清理旧镜像
                                 echo "清理旧镜像..."
                                 docker system prune -f
                                 
                                 # 验证部署
-                                CONTAINER_RUNNING=$(docker ps | grep -c '${DOCKER_CONTAINER_NAME}')
+                                CONTAINER_RUNNING=$(docker ps | grep -c ${DOCKER_CONTAINER_NAME})
                                 if [ "$CONTAINER_RUNNING" -eq 1 ]; then
-                                    echo "部署成功! '${DOCKER_CONTAINER_NAME}' 容器正在运行"
+                                    echo "部署成功! ${DOCKER_CONTAINER_NAME} 容器正在运行"
                                 else
-                                    echo "部署失败! '${DOCKER_CONTAINER_NAME}' 容器未正常启动"
+                                    echo "部署失败! ${DOCKER_CONTAINER_NAME} 容器未正常启动"
                                     exit 1
                                 fi
                             EOF

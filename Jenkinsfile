@@ -129,7 +129,7 @@ pipeline {
                         
                         // 在部署服务器上加载镜像并启动服务
                         echo '在服务器上部署应用...'
-                        sh """
+                        sh '''
                             ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} << 'EOF'
                                 echo '开始部署应用...'
                                 # 进入部署目录
@@ -168,7 +168,7 @@ pipeline {
                                     exit 1
                                 fi
                             EOF
-                        """
+                        '''
                     }
                     
                     // 清理本地临时文件

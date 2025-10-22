@@ -96,10 +96,27 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
+                    // 权限诊断步骤
+                    echo 'Docker权限诊断...'
+                    sh 'whoami'  // 显示当前执行Jenkins流水线的用户名
+                    sh 'id'
+                    sh 'groups'
+                    sh 'ls -la /var/run/docker.sock || echo "Docker socket not found"'
+                    sh 'docker info || echo "Docker info command failed"'
+                    
                     echo '构建Docker镜像: ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER}'
-                    // 构建Docker镜像
-                    sh 'docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
-                    sh 'docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
+                    
+                    // 尝试直接构建（首选方法）
+                    try {
+                        sh 'docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
+                        sh 'docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
+                        echo 'Docker构建成功，无需特殊权限处理'
+                    } catch (Exception e) {
+                        // 如果失败，尝试使用sudo（备选方法）
+                        echo '直接构建失败，尝试使用sudo...'
+                        sh 'sudo docker build -t ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} .'
+                        sh 'sudo docker tag ${DOCKER_IMAGE_NAME}:${BUILD_NUMBER} ${DOCKER_IMAGE_NAME}:latest'
+                    }
                 }
             }
         }

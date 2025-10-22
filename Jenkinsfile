@@ -105,9 +105,9 @@ pipeline {
                     
                     // 检查本地是否存在所需的基础镜像
                     echo '检查本地Docker镜像...'
-                    sh 'docker images | grep -E "^nginx\\s+stable-alpine3.21-perl" || echo "node:lts-alpine3.22镜像可能不存在，将尝试使用本地缓存"'
+                    sh 'docker images | grep -E ""^nginx\\s+stable-alpine3.21-perl"" || echo "node:lts-alpine3.22镜像可能不存在，将尝试使用本地缓存"'
                     // sh 'docker pull node:lts-alpine3.22'
-                    sh 'docker images | grep -E "^nginx\\s+stable-alpine3.21-perl" || echo "nginx:stable-alpine3.21-perl镜像可能不存在，将尝试使用本地缓存"'
+                    sh 'docker images | grep -E ""^nginx\\s+stable-alpine3.21-perl"" || echo "nginx:stable-alpine3.21-perl镜像可能不存在，将尝试使用本地缓存"'
                     // sh 'docker pull nginx:stable-alpine3.21-perl'
                     // 添加网络配置处理连接问题
                     echo '构建Docker镜像，使用本地基础镜像...'

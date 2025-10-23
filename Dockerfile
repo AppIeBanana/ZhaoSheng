@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS build
+FROM node:25-alpine3.22 AS build
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ COPY . .
 RUN pnpm run build
 
 # Production stage
-FROM nginx:alpine
+FROM nginx:1.29-alpine3.22
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf

@@ -1,10 +1,6 @@
 # Build stage
 # 使用指定域名拉取镜像
-FROM i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod AS build
-# 或者使用阿里云镜像源（注释掉上面一行，取消下面一行注释）
-# FROM node.registry.cn-hangzhou.aliyuncs.com/library/node:25-alpine3.21 AS build
-# 或者使用官方镜像源（注释掉上面一行，取消下面一行注释）
-# FROM node:25-alpine3.21 AS build
+FROM node:lts-jod AS build
 
 WORKDIR /app
 
@@ -24,11 +20,7 @@ RUN pnpm run build
 
 # Production stage
 # 使用指定域名拉取镜像
-FROM i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl
-# 或者使用阿里云镜像源（注释掉上面一行，取消下面一行注释）
-# FROM nginx.registry.cn-hangzhou.aliyuncs.com/library/nginx:stable-alpine3.21-perl
-# 或者使用官方镜像源（注释掉上面一行，取消下面一行注释）
-# FROM nginx:stable-alpine3.21-perl
+FROM nginx:stable-perl
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf

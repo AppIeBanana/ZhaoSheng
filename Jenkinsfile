@@ -12,8 +12,8 @@ pipeline {
         // Docker相关配置
         DOCKER_IMAGE_NAME = 'zhaosheng-web'
         DOCKER_CONTAINER_NAME = 'zhaosheng-web'
-        DOCKER_IMAGE_PATH_NODE = '/projects/ZhaoSheng/node-lts-jod.tar'
-        DOCKER_IMAGE_PATH_NGINX = '/projects/ZhaoSheng/nginx-stable-perl.tar'
+        DOCKER_IMAGE_PATH_NODE = '/docker_images/node-lts-jod.tar'
+        DOCKER_IMAGE_PATH_NGINX = '/docker_images/nginx-stable-perl.tar'
         // 生成版本号（基于构建ID和时间戳）
         DOCKER_IMAGE_VERSION = "${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmmss')}"
         // 部署服务器配置
@@ -67,6 +67,9 @@ pipeline {
                         
                         # 安装项目依赖
                         pnpm install
+
+                        更新browserslist数据库...
+                        npx update-browserslist-db@latest
                     '''
                 }
             }
@@ -80,8 +83,8 @@ pipeline {
                     // TypeScript类型检查
                     sh 'npx tsc --noEmit'
                     
-                    // 如果有测试，可以启用
-                    // sh 'pnpm test'
+                    // 启用测试
+                    sh 'pnpm test'
                 }
             }
         }

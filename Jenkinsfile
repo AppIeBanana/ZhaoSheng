@@ -110,9 +110,9 @@ pipeline {
                     // 检查本地是否存在所需的基础镜像
                     echo '检查本地Docker镜像...'
                     // 检查Node镜像，如果不存在则尝试从本地文件加载
-                    sh "导入本地node镜像"
+                    echo '导入本地node镜像'
                     sh "docker load -i ${DOCKER_IMAGE_PATH_NODE}"
-                    sh "导入本地nginx镜像"
+                    echo '导入本地nginx镜像'
                     sh "docker load -i ${DOCKER_IMAGE_PATH_NGINX}"
                     
                     // sh '''docker images | grep -E "^node\\s+25-alpine3.22" || echo "node:25-alpine3.22镜像不存在，将使用Docker缓存机制"'''

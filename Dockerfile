@@ -18,7 +18,7 @@ COPY . .
 RUN pnpm run build
 
 # Production stage
-FROM nginx:1.29-alpine3.22
+# FROM nginx:1.29-alpine3.22
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf

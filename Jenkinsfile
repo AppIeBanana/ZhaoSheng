@@ -166,7 +166,7 @@ pipeline {
                     sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
-                    withCredentials([sshUserPrivateKey(credentialsId: 'root', keyFileVariable: 'SSH_KEY')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins', keyFileVariable: 'SSH_KEY')]) {
                         // 确保部署目录存在
                         sh 'ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} \'mkdir -p ${DEPLOY_PATH}\''
                         

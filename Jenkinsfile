@@ -12,6 +12,8 @@ pipeline {
         // Docker相关配置
         DOCKER_IMAGE_NAME = 'zhaosheng-web'
         DOCKER_CONTAINER_NAME = 'zhaosheng-web'
+        DOCKER_IMAGE_PATH_NODE = '/projects/ZhaoSheng/node-25-alpine3.22.tar'
+        DOCKER_IMAGE_PATH_NGINX = '/projects/ZhaoSheng/nginx-1.29-alpine3.22.tar'
         // 生成版本号（基于构建ID和时间戳）
         DOCKER_IMAGE_VERSION = "${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmmss')}"
         // 部署服务器配置
@@ -108,9 +110,17 @@ pipeline {
                     // 检查本地是否存在所需的基础镜像
                     echo '检查本地Docker镜像...'
                     // 检查Node镜像，如果不存在则尝试从本地文件加载
-                    sh '''docker images | grep -E "^node\\s+lts-alpine3.22" || echo "node:lts-alpine3.22镜像不存在，将使用Docker缓存机制"'''
+                    def nodeImageExists = sh(script: 'docker images | grep -q "^node\\s+25-alpine3.22"', returnStatus: true) == 0
+                    if (!nodeImageExists) {
+                        sh "docker load -i ${DOCKER_IMAGE_PATH_NODE}"
+                    }
+                    def nginxImageExists = sh(script: 'docker images | grep -q "^nginx\\s+1.29-alpine3.22"', returnStatus: true) == 0
+                    if (!nginxImageExists) {
+                        sh "docker load -i ${DOCKER_IMAGE_PATH_NGINX}"
+                    }
+                    // sh '''docker images | grep -E "^node\\s+25-alpine3.22" || echo "node:25-alpine3.22镜像不存在，将使用Docker缓存机制"'''
                     // 检查Nginx镜像，如果不存在则尝试从本地文件加载
-                    sh '''docker images | grep -E "^nginx\\s+stable-alpine3.21-perl" || echo "nginx:stable-alpine3.21-perl镜像不存在，将使用Docker缓存机制"'''
+                    // sh '''docker images | grep -E "^nginx\\s+1.29-alpine3.22" || echo "nginx:1.29-alpine3.22镜像不存在，将使用Docker缓存机制"'''
                     // 添加网络配置处理连接问题
                     echo "构建Docker镜像，版本号：${DOCKER_IMAGE_VERSION}，使用本地基础镜像..."
                     // --pull=false 确保Docker不尝试拉取镜像，优先使用本地镜像

@@ -159,7 +159,7 @@ pipeline {
                     sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
-                    withCredentials([sshUserPrivateKey(credentialsId: 'deploy-server-credentials', keyFileVariable: 'SSH_KEY')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: '741bbcae-2cc0-44e1-b0aa-fb0e579a0354', keyFileVariable: 'SSH_KEY')]) {
                         // 确保部署目录存在
                         sh 'ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DEPLOY_SERVER} \'mkdir -p ${DEPLOY_PATH}\''
                         

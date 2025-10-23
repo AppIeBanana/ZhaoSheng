@@ -12,8 +12,8 @@ pipeline {
         // Docker相关配置
         DOCKER_IMAGE_NAME = 'zhaosheng-web'
         DOCKER_CONTAINER_NAME = 'zhaosheng-web'
-        DOCKER_IMAGE_PATH_NODE = '/projects/ZhaoSheng/node-25-alpine3.22.tar'
-        DOCKER_IMAGE_PATH_NGINX = '/projects/ZhaoSheng/nginx-1.29-alpine3.22.tar'
+        DOCKER_IMAGE_PATH_NODE = '/projects/ZhaoSheng/node-25-alpine3.21.tar'
+        DOCKER_IMAGE_PATH_NGINX = '/projects/ZhaoSheng/nginx-stable-alpine3.21-perl.tar'
         // 生成版本号（基于构建ID和时间戳）
         DOCKER_IMAGE_VERSION = "${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmmss')}"
         // 部署服务器配置
@@ -171,18 +171,30 @@ pipeline {
                                 
                                 # 优先加载本地基础镜像文件
                                 echo '优先加载本地基础镜像文件...'
-                                # 加载Node基础镜像
-                                if [ -f "${DEPLOY_PATH}/node-lts-alpine3.22.tar" ]; then
+                                # 加载Node基础镜像（适配指定域名的镜像）
+                                if [ -f "${DEPLOY_PATH}/node-25-alpine3.21.tar" ]; then
                                     echo '发现本地Node基础镜像文件，正在加载...'
-                                    docker load -i "${DEPLOY_PATH}/node-lts-alpine3.22.tar" || echo 'Node基础镜像加载失败，将继续部署'
+                                    docker load -i "${DEPLOY_PATH}/node-25-alpine3.21.tar" || echo 'Node基础镜像加载失败，将继续部署'
+                                    
+                                    # 为加载的镜像添加指定域名的标签，确保与Dockerfile一致
+                                    if docker images | grep -q 'node:25-alpine3.21'; then
+                                        echo '为Node镜像添加指定域名标签...'
+                                        docker tag node:25-alpine3.21 i0qlp8mg3an5h2.xuanyuan.run/node:25-alpine3.21
+                                    fi
                                 else
                                     echo '未发现本地Node基础镜像文件，跳过加载'
                                 fi
-                                
-                                # 加载Nginx基础镜像
+                                  
+                                # 加载Nginx基础镜像（适配指定域名的镜像）
                                 if [ -f "${DEPLOY_PATH}/nginx-stable-alpine3.21-perl.tar" ]; then
                                     echo '发现本地Nginx基础镜像文件，正在加载...'
                                     docker load -i "${DEPLOY_PATH}/nginx-stable-alpine3.21-perl.tar" || echo 'Nginx基础镜像加载失败，将继续部署'
+                                    
+                                    # 为加载的镜像添加指定域名的标签，确保与Dockerfile一致
+                                    if docker images | grep -q 'nginx:stable-alpine3.21-perl'; then
+                                        echo '为Nginx镜像添加指定域名标签...'
+                                        docker tag nginx:stable-alpine3.21-perl i0qlp8mg3an5h2.xuanyuan.run/nginx:stable-alpine3.21-perl
+                                    fi
                                 else
                                     echo '未发现本地Nginx基础镜像文件，跳过加载'
                                 fi

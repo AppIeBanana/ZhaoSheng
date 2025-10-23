@@ -12,6 +12,8 @@ pipeline {
         // Docker相关配置
         DOCKER_IMAGE_NAME = 'zhaosheng-web'
         DOCKER_CONTAINER_NAME = 'zhaosheng-web'
+        // 生成版本号（基于构建ID和时间戳）
+        DOCKER_IMAGE_VERSION = "${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmmss')}"
         // 部署服务器配置
         DEPLOY_SERVER = '175.42.63.9'
         DEPLOY_PATH = '/projects/ZhaoSheng'
@@ -105,15 +107,20 @@ pipeline {
                     
                     // 检查本地是否存在所需的基础镜像
                     echo '检查本地Docker镜像...'
-                    sh 'docker images | grep -E ""^nginx\\s+stable-alpine3.21-perl"" || echo "node:lts-alpine3.22镜像可能不存在，将尝试使用本地缓存"'
-                    // sh 'docker pull node:lts-alpine3.22'
-                    sh 'docker images | grep -E ""^nginx\\s+stable-alpine3.21-perl"" || echo "nginx:stable-alpine3.21-perl镜像可能不存在，将尝试使用本地缓存"'
-                    // sh 'docker pull nginx:stable-alpine3.21-perl'
+                    // 检查Node镜像，如果不存在则尝试从本地文件加载
+                    sh '''docker images | grep -E "^node\\s+lts-alpine3.22" || echo "node:lts-alpine3.22镜像不存在，将使用Docker缓存机制"'''
+                    // 检查Nginx镜像，如果不存在则尝试从本地文件加载
+                    sh '''docker images | grep -E "^nginx\\s+stable-alpine3.21-perl" || echo "nginx:stable-alpine3.21-perl镜像不存在，将使用Docker缓存机制"'''
                     // 添加网络配置处理连接问题
-                    echo '构建Docker镜像，使用本地基础镜像...'
+                    echo "构建Docker镜像，版本号：${DOCKER_IMAGE_VERSION}，使用本地基础镜像..."
                     // --pull=false 确保Docker不尝试拉取镜像，优先使用本地镜像
                     // --network=host 使用主机网络配置
-                    sh 'docker build --network=host --pull=false -t ${DOCKER_IMAGE_NAME}:latest .'
+                    // 同时标记latest和具体版本号
+                    sh "docker build --network=host --pull -t ${DOCKER_IMAGE_NAME}:latest -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} ."
+                    
+                    // 显示构建的镜像信息
+                    echo "构建完成，镜像信息："
+                    sh "docker images ${DOCKER_IMAGE_NAME}"
                 }
             }
         }
@@ -126,7 +133,7 @@ pipeline {
             steps {
                 script {
                     echo '部署到服务器 ${DEPLOY_SERVER}:${DEPLOY_PATH}'
-                    // 将Docker镜像导出为tar文件（使用固定的latest标签）
+                    // 将Docker镜像导出为tar文件（仍然使用latest标签，符合部署要求）
                     sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
@@ -155,8 +162,26 @@ pipeline {
                                 echo '停止并移除旧容器...'
                                 docker-compose down || true
                                 
-                                # 加载新镜像
-                                echo '加载新镜像...'
+                                # 优先加载本地基础镜像文件
+                                echo '优先加载本地基础镜像文件...'
+                                # 加载Node基础镜像
+                                if [ -f "${DEPLOY_PATH}/node-lts-alpine3.22.tar" ]; then
+                                    echo '发现本地Node基础镜像文件，正在加载...'
+                                    docker load -i "${DEPLOY_PATH}/node-lts-alpine3.22.tar" || echo 'Node基础镜像加载失败，将继续部署'
+                                else
+                                    echo '未发现本地Node基础镜像文件，跳过加载'
+                                fi
+                                
+                                # 加载Nginx基础镜像
+                                if [ -f "${DEPLOY_PATH}/nginx-stable-alpine3.21-perl.tar" ]; then
+                                    echo '发现本地Nginx基础镜像文件，正在加载...'
+                                    docker load -i "${DEPLOY_PATH}/nginx-stable-alpine3.21-perl.tar" || echo 'Nginx基础镜像加载失败，将继续部署'
+                                else
+                                    echo '未发现本地Nginx基础镜像文件，跳过加载'
+                                fi
+                                
+                                # 加载应用镜像
+                                echo '加载应用镜像...'
                                 docker load -i ${DOCKER_IMAGE_NAME}.tar
                                 
                                 # 启动新容器

@@ -110,14 +110,11 @@ pipeline {
                     // 检查本地是否存在所需的基础镜像
                     echo '检查本地Docker镜像...'
                     // 检查Node镜像，如果不存在则尝试从本地文件加载
-                    def nodeImageExists = sh(script: 'docker images | grep -q "^node\\s+25-alpine3.22"', returnStatus: true) == 0
-                    if (!nodeImageExists) {
-                        sh "docker load -i ${DOCKER_IMAGE_PATH_NODE}"
-                    }
-                    def nginxImageExists = sh(script: 'docker images | grep -q "^nginx\\s+1.29-alpine3.22"', returnStatus: true) == 0
-                    if (!nginxImageExists) {
-                        sh "docker load -i ${DOCKER_IMAGE_PATH_NGINX}"
-                    }
+                    sh "导入本地node镜像"
+                    sh "docker load -i ${DOCKER_IMAGE_PATH_NODE}"
+                    sh "导入本地nginx镜像"
+                    sh "docker load -i ${DOCKER_IMAGE_PATH_NGINX}"
+                    
                     // sh '''docker images | grep -E "^node\\s+25-alpine3.22" || echo "node:25-alpine3.22镜像不存在，将使用Docker缓存机制"'''
                     // 检查Nginx镜像，如果不存在则尝试从本地文件加载
                     // sh '''docker images | grep -E "^nginx\\s+1.29-alpine3.22" || echo "nginx:1.29-alpine3.22镜像不存在，将使用Docker缓存机制"'''

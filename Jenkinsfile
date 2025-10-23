@@ -17,7 +17,7 @@ pipeline {
         // 生成版本号（基于构建ID和时间戳）
         DOCKER_IMAGE_VERSION = "${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmmss')}"
         // 部署服务器配置
-        DEPLOY_SERVER = '10.26.1.82'
+        DEPLOY_SERVER = '175.42.63.9'
         DEPLOY_PATH = '/projects/ZhaoSheng'
         GITLAB_REPO = 'http://172.21.9.233:18080/Wanzhong/zhaosheng.git'
     }

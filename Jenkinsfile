@@ -166,23 +166,23 @@ pipeline {
                     sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
-                    withCredentials([usernamePassword(credentialsId: 'jenkins_id_pwd', usernameVariable: 'SSH_USERNAME', passwordVariable: 'SSH_PASSWORD')]) {
+                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USERNAME')]) {
                         // 确保部署目录存在
-                        sh 'sshpass -p ${SSH_PASSWORD} ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} \'mkdir -p ${DEPLOY_PATH}\''
+                        sh 'ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} \'mkdir -p ${DEPLOY_PATH}\''
                         
                         // 复制Docker镜像
                         echo '复制Docker镜像到服务器...'
-                        sh 'sshpass -p ${SSH_PASSWORD} scp -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}'
+                        sh 'scp -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}'
                         
                         // 复制必要的配置文件
                         echo '复制配置文件到服务器...'
-                        sh 'sshpass -p ${SSH_PASSWORD} scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}'
-                        sh 'sshpass -p ${SSH_PASSWORD} scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}'
+                        sh 'scp -i ${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}'
+                        sh 'scp -i ${SSH_KEY} -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}'
                         
                         // 在部署服务器上加载镜像并启动服务
                         echo '在服务器上部署应用...'
                         sh '''
-                            sshpass -p ${SSH_PASSWORD} ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} << 'EOF'
+                            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} << 'EOF'
                                 echo '开始部署应用...'
                                 # 进入部署目录
                                 cd ${DEPLOY_PATH}

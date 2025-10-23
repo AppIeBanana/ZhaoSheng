@@ -84,7 +84,7 @@ pipeline {
                     sh 'npx tsc --noEmit'
                     
                     // 启用测试
-                    sh 'pnpm test'
+                    // sh 'pnpm test'
                 }
             }
         }

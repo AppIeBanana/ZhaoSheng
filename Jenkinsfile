@@ -168,7 +168,7 @@ pipeline {
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USERNAME')]) {
                         // 确保部署目录存在
-                        sh 'ssh -i ${SSH_KEY} -o StrictHostKeyChecking=yes ${SSH_USERNAME}@${DEPLOY_SERVER} \'mkdir -p ${DEPLOY_PATH}\''
+                        // sh 'ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} \'mkdir -p ${DEPLOY_PATH}\''
                         
                         // 复制Docker镜像
                         echo '复制Docker镜像到服务器...'

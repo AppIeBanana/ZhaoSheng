@@ -68,7 +68,7 @@ pipeline {
                         # 安装项目依赖
                         pnpm install
 
-                        更新browserslist数据库...
+                        # 更新browserslist数据库...
                         npx update-browserslist-db@latest
                     '''
                 }

@@ -30,8 +30,8 @@ checkout_code:
   stage: checkout
   script:
     - echo "从 ${CI_REPOSITORY_URL} 拉取 ${CI_COMMIT_REF_NAME} 分支代码"
-    - echo "当前分支: ${CI_COMMIT_REF_NAME}"
-    - echo "提交ID: ${CI_COMMIT_SHA}"
+    - echo "当前分支:${CI_COMMIT_REF_NAME}"
+    - echo "提交ID:${CI_COMMIT_SHA}"
   tags:
     - docker
 

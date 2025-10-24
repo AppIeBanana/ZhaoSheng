@@ -254,9 +254,10 @@ pipeline {
                                 echo '清理旧镜像...'
                                 docker system prune -f
                                 
-                                # 验证部署 - 增强变量处理和调试信息
-                                # 使用 $(()) 确保结果是整数类型
-                                CONTAINER_RUNNING=$(( $(docker ps | grep -c "${DOCKER_CONTAINER_NAME}" || echo 0) ))
+                                # 验证部署 - 修复算术表达式错误
+                                # 获取容器运行数量，确保结果为整数
+                                CONTAINER_COUNT=$(docker ps | grep -c "${DOCKER_CONTAINER_NAME}" || echo 0)
+                                CONTAINER_RUNNING=$CONTAINER_COUNT
                                 # 添加调试信息
                                 echo "容器运行状态检查结果: CONTAINER_RUNNING=${CONTAINER_RUNNING}"
                                 

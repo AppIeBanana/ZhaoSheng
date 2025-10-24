@@ -194,38 +194,9 @@ pipeline {
                                 # 进入部署目录
                                 cd ${DEPLOY_PATH}
                                   
-                                # 检查并安装docker-compose（如果需要）
-                                echo '检查docker-compose...'
-                                if ! command -v docker-compose &> /dev/null; then
-                                    echo 'docker-compose命令未找到，尝试安装...'
-                                    # 尝试使用pip安装
-                                    if command -v pip3 &> /dev/null; then
-                                        pip3 install docker-compose
-                                    elif command -v pip &> /dev/null; then
-                                        pip install docker-compose
-                                    else
-                                        echo '尝试直接下载docker-compose二进制文件...'
-                                        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-                                        chmod +x /usr/local/bin/docker-compose
-                                    fi
-                                else
-                                    echo 'docker-compose已安装'
-                                fi
-                                
-                                # 也尝试使用docker compose（v2版本）
-                                echo '尝试使用docker compose（v2版本）...'
-                                if command -v docker &> /dev/null && docker compose version &> /dev/null; then
-                                    echo '使用docker compose（v2版本）'
-                                    # 停止并移除旧容器
-                                    echo '停止并移除旧容器...'
-                                    docker compose down || true
-                                else
-                                    # 使用docker-compose（v1版本）
-                                    echo '使用docker-compose（v1版本）'
-                                    # 停止并移除旧容器
-                                    echo '停止并移除旧容器...'
-                                    docker-compose down || true
-                                fi
+                                # 停止并移除旧容器
+                                echo '停止并移除旧容器...'
+                                docker-compose down || true
                                 
                                 # 优先加载本地基础镜像文件
                                 echo '优先加载本地基础镜像文件...'
@@ -269,13 +240,7 @@ pipeline {
                                 
                                 # 启动新容器
                                 echo '启动新容器...'
-                                if command -v docker &> /dev/null && docker compose version &> /dev/null; then
-                                    # 使用docker compose（v2版本）
-                                    docker compose up -d
-                                else
-                                    # 使用docker-compose（v1版本）
-                                    docker-compose up -d
-                                fi
+                                docker-compose up -d
                                 
                                 # 等待容器启动
                                 echo '等待容器启动...'

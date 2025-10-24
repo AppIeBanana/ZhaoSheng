@@ -166,23 +166,30 @@ pipeline {
                     sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
-                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USERNAME')]) {
-                        // 确保部署目录存在
-                        // sh 'ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} \'mkdir -p ${DEPLOY_PATH}\''
-                        
-                        // 复制Docker镜像
-                        echo '复制Docker镜像到服务器...'
-                        sh 'scp -i ${SSH_KEY} -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}'
-                        
-                        // 复制必要的配置文件
-                        echo '复制配置文件到服务器...'
-                        sh 'scp -i ${SSH_KEY} -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}'
-                        sh 'scp -i ${SSH_KEY} -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}'
-                        
-                        // 在部署服务器上加载镜像并启动服务
-                        echo '在服务器上部署应用...'
+                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', passphraseVariable: 'SSH_PASSPHRASE', usernameVariable: 'SSH_USERNAME')]) {
+                        // 使用ssh-agent自动处理密钥passphrase
                         sh '''
-                            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} << 'EOF'
+                            # 启动ssh-agent
+                            eval $(ssh-agent -s)
+                            
+                            # 添加私钥到ssh-agent，使用SSH_PASSPHRASE环境变量提供密码
+                            echo ${SSH_PASSPHRASE} | ssh-add ${SSH_KEY}
+                            
+                            # 确保部署目录存在
+                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} 'mkdir -p ${DEPLOY_PATH}'
+                            
+                            # 复制Docker镜像
+                            echo '复制Docker镜像到服务器...'
+                            scp -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
+                            
+                            # 复制必要的配置文件
+                            echo '复制配置文件到服务器...'
+                            scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
+                            scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
+                            
+                            # 在部署服务器上加载镜像并启动服务
+                            echo '在服务器上部署应用...'
+                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} << 'EOF'
                                 echo '开始部署应用...'
                                 # 进入部署目录
                                 cd ${DEPLOY_PATH}

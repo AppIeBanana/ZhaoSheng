@@ -122,20 +122,14 @@ deploy_to_server:
     - ssh ${SSH_USERNAME}@${DEPLOY_SERVER} '
         echo "开始部署应用...";
         cd ${DEPLOY_PATH};
-        
-        # 停止并移除旧容器
+
         echo "停止并移除旧容器...";
         docker-compose down || true;
-        
-        # 优先加载本地基础镜像文件
+
         echo "优先加载本地基础镜像文件...";
-        
-        # 加载Node基础镜像
         if [ -f "${DEPLOY_PATH}/node-lts-jod.tar" ]; then
           echo "发现本地Node基础镜像文件，正在加载...";
           docker load -i "${DEPLOY_PATH}/node-lts-jod.tar" || echo "Node基础镜像加载失败，将继续部署";
-          
-          # 为Node镜像添加指定域名标签
           if docker images | grep -q "node:lts-jod" || docker images | grep -q "library/node:lts-jod"; then
             echo "为Node镜像添加指定域名标签...";
             docker tag node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || 
@@ -143,13 +137,11 @@ deploy_to_server:
             echo "Node镜像标签设置失败，但将继续部署";
           fi;
         fi;
-        
-        # 加载Nginx基础镜像
+
         if [ -f "${DEPLOY_PATH}/nginx-stable-perl.tar" ]; then
           echo "发现本地Nginx基础镜像文件，正在加载...";
           docker load -i "${DEPLOY_PATH}/nginx-stable-perl.tar" || echo "Nginx基础镜像加载失败，将继续部署";
           
-          # 为Nginx镜像添加指定域名标签
           if docker images | grep -q "nginx:stable-perl" || docker images | grep -q "library/nginx:stable-perl"; then
             echo "为Nginx镜像添加指定域名标签...";
             docker tag nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || 
@@ -158,7 +150,6 @@ deploy_to_server:
           fi;
         fi;
         
-        # 拉取并启动应用
         echo "拉取最新应用镜像...";
         docker pull ${DOCKER_IMAGE_NAME}:latest;
         

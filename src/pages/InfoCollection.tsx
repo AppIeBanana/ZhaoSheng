@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-
 import { useStudentData } from '@/contexts/studentContext.tsx';
 // import { useWechatAuthContext } from '@/contexts/wechatAuthContext.tsx';
 import { toast } from 'sonner';
 import { provinces } from '@/data/provinces.ts';
 import { ethnicities } from '@/data/ethnicities.ts';
+
+// 注意：表单提交现在直接调用后端API，不需要本地实现submitFormData函数
 
 export default function InfoCollection() {
   const navigate = useNavigate();
@@ -26,9 +27,31 @@ export default function InfoCollection() {
   const [dialogIdInput, setDialogIdInput] = useState('');
   const [showManualIdInput, setShowManualIdInput] = useState(false);
   
-  // 检查URL中是否有ID或本地存储中是否有保存的ID
+  // 处理从后端OAuth回调返回的参数
   useEffect(() => {
-    // 检查URL参数
+    // 检查URL参数中的auto_detected_id
+    const autoDetectedId = searchParams.get('auto_detected_id');
+    
+    if (autoDetectedId) {
+      // 保存自动检测的ID
+      localStorage.setItem('auto_detected_id', autoDetectedId);
+      
+      // 检查是否有与该ID关联的学生数据
+      const savedStudentData = localStorage.getItem(`student_data_${autoDetectedId}`);
+      if (savedStudentData) {
+        try {
+          setStudentData(JSON.parse(savedStudentData));
+        } catch (error) {
+          console.error('Failed to parse saved student data:', error);
+        }
+      }
+      
+      // 跳转到问答页面
+      navigate({ pathname: '/qa', search: `auto_detected_id=${autoDetectedId}` });
+      return;
+    }
+    
+    // 检查URL参数中的dialogId
     const urlDialogId = searchParams.get('dialogId');
     if (urlDialogId) {
       // 从本地存储中获取与该ID关联的学生数据
@@ -44,10 +67,10 @@ export default function InfoCollection() {
       return;
     }
     
-    // 检查是否有自动获取的ID（例如从微信授权）
-    const autoDetectedId = localStorage.getItem('auto_detected_id');
-    if (autoDetectedId) {
-      const savedStudentData = localStorage.getItem(`student_data_${autoDetectedId}`);
+    // 检查是否有自动获取的ID
+    const storedAutoId = localStorage.getItem('auto_detected_id');
+    if (storedAutoId) {
+      const savedStudentData = localStorage.getItem(`student_data_${storedAutoId}`);
       if (savedStudentData) {
         try {
           setStudentData(JSON.parse(savedStudentData));
@@ -55,7 +78,7 @@ export default function InfoCollection() {
           console.error('Failed to parse saved student data:', error);
         }
       }
-      navigate({ pathname: '/qa', search: `dialogId=${autoDetectedId}` });
+      navigate({ pathname: '/qa', search: `auto_detected_id=${storedAutoId}` });
     }
   }, [navigate, setStudentData, searchParams]);
   
@@ -165,16 +188,16 @@ export default function InfoCollection() {
     if (!formData.studentType) newErrors.studentType = "请选择考生类型";
     if (!formData.province) newErrors.province = "请选择生源省份";
     if (!formData.ethnicity) newErrors.ethnicity = "请选择民族";
-     // 分数为选填，但如果填写了则验证格式
-     if (formData.score && (isNaN(Number(formData.score)) || Number(formData.score) < 0)) {
-       newErrors.score = "请输入有效的分数";
-     }
+    // 分数为选填，但如果填写了则验证格式
+    if (formData.score && (isNaN(Number(formData.score)) || Number(formData.score) < 0)) {
+      newErrors.score = "请输入有效的分数";
+    }
     
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
@@ -182,18 +205,14 @@ export default function InfoCollection() {
     setIsSubmitting(true);
     
     try {
-      // Save form data to context
+      // Save form data to context (仅前端状态管理)
       setStudentData(formData);
       
-
-      // 生成新的对话ID
-      const newDialogId = `dialog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      // 生成新的对话ID（前端生成）
+      const dialogId = `dialog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // 将学生类型与ID关联保存到本地存储
-      localStorage.setItem(`student_data_${newDialogId}`, JSON.stringify(formData));
-      
-      // Navigate to Q&A page with the new dialog ID
-      navigate({ pathname: '/qa', search: `dialogId=${newDialogId}` });
+      // 重定向到QA页面，使用对话ID
+      navigate(`/qa?dialogId=${dialogId}`);
 
     } catch (error) {
       toast.error("提交失败，请重试");
@@ -434,10 +453,10 @@ export default function InfoCollection() {
               placeholder="请输入您的考试分数"
               className="w-full rounded-xl border border-gray-300 p-4 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
             />
-     {/* 分数为选填，移除必填错误提示 */}
-     {errors.score && (
-       <p className="text-red-500 text-xs mt-1">{errors.score}</p>
-     )}
+            {/* 分数为选填，但如果填写了错误格式会显示提示 */}
+            {errors.score && (
+              <p className="text-red-500 text-xs mt-1">{errors.score}</p>
+            )}
           </div>
           
           {/* Submit Button */}
@@ -447,15 +466,18 @@ export default function InfoCollection() {
             className={`
               w-full rounded-xl py-4 font-medium text-white transition-all transform
               ${isSubmitting 
-                ? 'bg-blue-400 cursor-not-allowed' 
-                : 'bg-blue-600 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0'}
-              flex items-center justify-center
+                ? 'bg-blue-500 cursor-not-allowed animate-pulse' 
+                : 'bg-blue-600 hover:-translate-y-0.5 hover:shadow-lg active:translate-y-0 hover:bg-blue-700'}
+              flex items-center justify-center gap-2
+              relative overflow-hidden
             `}
           >
             {isSubmitting ? (
               <>
-                <i className="fa-solid fa-spinner fa-spin mr-2"></i>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                 处理中...
+                {/* 背景波纹动画 */}
+                <span className="absolute inset-0 bg-white opacity-10 rounded-xl animate-[ripple_1.5s_infinite]"></span>
               </>
             ) : (
               <>

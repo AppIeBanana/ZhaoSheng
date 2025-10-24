@@ -1,116 +1,26 @@
-// 微信服务器验证的后端处理文件
-// 注意：此文件使用Node.js内置模块实现，无需安装额外依赖
+// 微信OAuth服务后端处理文件
+// 首先加载环境变量
+import dotenv from 'dotenv';
+dotenv.config();
+
 import https from 'https';
 import fs from 'fs';
 import path from 'path';
-import crypto from 'crypto';
-import { URL, URLSearchParams } from 'url';
-import { Readable } from 'stream';
+import { URL } from 'url';
 
-const port = 443;
+// 微信OAuth模块引用（将在启动时动态导入）
+let wechatOAuth;
+let WechatOAuth;
 
-// 尝试从配置文件导入微信验证Token
-let wechatToken = 'zhaosheng2024'; // 默认值，与config.ts保持一致
+// 从443端口更改为8443端口，避免与现有服务冲突并使用非特权端口
+const port = 8443;
 
-// try {
-//   // 检查是否存在配置文件
-//   const configPath = path.join(process.cwd(), 'src', 'lib', 'config.ts');
+// SSL证书配置 - 从环境变量读取证书路径
+const privateKeyPath = process.env.SSL_KEY_PATH || '/etc/letsencrypt/live/zswd.fzrjxy.com/privkey.pem'; // 私钥路径
+const certificatePath = process.env.SSL_CERT_PATH || '/etc/letsencrypt/live/zswd.fzrjxy.com/fullchain.pem'; // 证书路径
 
-//   if (fs.existsSync(configPath)) {
-//     // 读取配置文件内容
-//     const configContent = fs.readFileSync(configPath, 'utf8');
-//     // 简单的正则匹配TOKEN值
-//     const tokenMatch = configContent.match(/TOKEN:\s*['"]([\w\d]+)['"]/);
-//     if (tokenMatch && tokenMatch[1]) {
-//       wechatToken = tokenMatch[1];
-//       console.log('从配置文件读取到微信验证Token:', wechatToken);
-//     }
-//   }
-// } catch (error) {
-//   console.warn('无法读取配置文件，使用默认Token:', wechatToken, error.message);
-// }
-
-// 微信验证工具类
-class WechatVerify {
-  static verify(signature, timestamp, nonce, echostr) {
-    try {
-      // 1. 将token、timestamp、nonce三个参数进行字典序排序
-      const arr = [wechatToken, timestamp, nonce];
-      arr.sort();
-
-      // 2. 将三个参数字符串拼接成一个字符串进行sha1加密
-      const str = arr.join('');
-      const hash = crypto.createHash('sha1');
-      hash.update(str);
-      const result = hash.digest('hex');
-
-      // 打印验证信息，便于调试
-      console.log('微信验证详情:');
-      console.log('  - 收到的signature:', signature);
-      console.log('  - 计算出的signature:', result);
-      console.log('  - token:', wechatToken);
-      console.log('  - timestamp:', timestamp);
-      console.log('  - nonce:', nonce);
-      console.log('  - 排序后的数组:', arr);
-      console.log('  - 拼接后的字符串:', str);
-
-      // 3. 开发者获得加密后的字符串可与signature对比，标识该请求来源于微信
-      if (result === signature) {
-        console.log('✓ signature验证成功');
-        return echostr;
-      } else {
-        console.log('✗ signature验证失败');
-      }
-
-      return null;
-    } catch (error) {
-      console.error('微信服务器验证失败:', error);
-      return null;
-    }
-  }
-
-  // 生成测试用的signature（用于本地测试）
-  static generateTestSignature(timestamp = null, nonce = null) {
-    // 如果没有提供timestamp或nonce，生成默认值
-    const ts = timestamp || Date.now().toString();
-    const nc = nonce || Math.random().toString(36).substr(2, 9);
-
-    // 按微信算法生成signature
-    const arr = [wechatToken, ts, nc];
-    arr.sort();
-    const str = arr.join('');
-    const hash = crypto.createHash('sha1');
-    hash.update(str);
-    const signature = hash.digest('hex');
-
-    console.log('生成测试用signature:');
-    console.log('  - 生成的signature:', signature);
-    console.log('  - timestamp:', ts);
-    console.log('  - nonce:', nc);
-    console.log('  - 测试URL: https://localhost:443/wechat?signature=' + signature + '&timestamp=' + ts + '&nonce=' + nc + '&echostr=test_echo');
-
-    return { signature, timestamp: ts, nonce: nc };
-  }
-}
-
-// SSL证书配置 - 仅使用生产环境证书路径 (仅支持HTTPS)
-const privateKeyPath = '/etc/letsencrypt/live/zswd.fzrjxy.com/privkey.pem'; // 私钥路径
-const certificatePath = '/etc/letsencrypt/live/zswd.fzrjxy.com/fullchain.pem'; // 证书路径
-
-// 检查证书文件是否存在
-if (!fs.existsSync(privateKeyPath) || !fs.existsSync(certificatePath)) {
-  console.error(`错误: 找不到SSL证书文件!`);
-  console.error(`私钥路径: ${privateKeyPath}`);
-  console.error(`证书路径: ${certificatePath}`);
-
-  // 如果是生产环境，退出程序
-  if (process.env.NODE_ENV === 'production') {
-    process.exit(1);
-  }
-
-  // 开发环境下提示用户
-  console.warn('开发环境下请确保证书文件存在或手动创建自签名证书');
-}
+// 微信服务器验证配置 - 从环境变量读取
+const WECHAT_TOKEN = process.env.WECHAT_TOKEN || 'zhaosheng2024'; // 与微信公众平台配置一致
 
 // 读取SSL证书和私钥
 let privateKey, certificate, credentials;
@@ -150,9 +60,6 @@ try {
   if (process.env.NODE_ENV === 'production') {
     console.error('在生产环境中，证书加载失败将导致程序退出');
     process.exit(1);
-  } else {
-    console.warn('警告: 在开发环境中，证书加载失败可能导致服务器无法正常启动');
-    console.warn('请确保提供有效的SSL证书，或在开发环境中修改代码使用测试证书路径');
   }
 }
 
@@ -164,13 +71,13 @@ if (credentials) {
     const startTime = Date.now();
     const parsedUrl = new URL(req.url, `https://${req.headers.host}`);
     const pathname = parsedUrl.pathname;
+    const method = req.method;
     
     // 记录所有接收到的请求
     console.log(`=== 收到请求 ===`);
     console.log(`时间: ${new Date().toISOString()}`);
-    console.log(`方法: ${req.method}`);
+    console.log(`方法: ${method}`);
     console.log(`路径: ${pathname}`);
-    console.log(`请求URL: ${req.url}`);
     console.log(`客户端IP: ${req.socket.remoteAddress}`);
     
     // 重写res.writeHead方法以记录响应状态码
@@ -183,69 +90,128 @@ if (credentials) {
       return originalWriteHead.apply(this, arguments);
     };
 
-    // 处理微信验证和消息推送 - 支持根路径和/wechat路径
-    const isWechatPath = pathname === '/wechat' || pathname === '/';
-    
-    if (isWechatPath && req.method === 'GET') {
-      // 微信服务器验证请求（支持根路径）
-      const { signature, timestamp, nonce, echostr } = Object.fromEntries(parsedUrl.searchParams);
-
-      console.log('收到微信服务器验证请求:', {
-        signature,
-        timestamp,
-        nonce,
-        echostr,
-        path: pathname
-      });
-
-      // 验证请求
-      const verifiedEchostr = WechatVerify.verify(
-        signature,
-        timestamp,
-        nonce,
-        echostr
-      );
-
-      if (verifiedEchostr) {
-        console.log('微信服务器验证成功，返回200状态码');
-        res.writeHead(200, { 'Content-Type': 'text/plain' });
-        res.end(verifiedEchostr);
-      } else {
-        console.log('微信服务器验证失败，返回403状态码');
-        res.writeHead(403, { 'Content-Type': 'text/plain' });
-        res.end('验证失败');
+    // 微信OAuth授权URL生成端点
+    if (pathname === '/api/wechat/auth-url' && method === 'GET') {
+      const dialogId = parsedUrl.searchParams.get('dialogId');
+      
+      if (!dialogId) {
+        console.warn('缺少dialogId参数');
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '缺少dialogId参数' }));
+        return;
       }
-    } else if (isWechatPath && req.method === 'POST') {
-      // 微信消息推送
-      let body = '';
-      req.on('data', chunk => {
-        body += chunk;
-      });
-      req.on('end', () => {
-        console.log('收到微信消息推送:', body);
-
-        // 返回success响应
-        res.writeHead(200, { 'Content-Type': 'application/xml' });
-        res.end('<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>');
-      });
-    } else {
-      // 简单的静态文件服务和404处理
-      console.log(`路径 ${pathname} 不存在，返回404`);
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
-      res.end('Not Found');
+      
+      try {
+        // 检查wechatOAuth模块是否已加载
+        if (!wechatOAuth || !WechatOAuth) {
+          console.error('生成授权URL失败: 微信OAuth服务暂不可用');
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: '微信OAuth服务暂不可用' }));
+          return;
+        }
+        
+        if (!wechatOAuth) {
+          // 如果wechatOAuth未初始化，创建一个新实例
+          wechatOAuth = new WechatOAuth();
+        }
+        
+        const authUrl = wechatOAuth.generateAuthUrl(dialogId);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ authUrl }));
+        
+        console.log(`成功生成微信授权URL，dialogId: ${dialogId}`);
+      } catch (error) {
+        console.error('生成授权URL失败:', error);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '生成授权URL失败', message: error.message }));
+      }
+      return;
+    } 
+    else if (pathname === '/api/wechat/callback' && method === 'GET') {
+      // 处理微信授权回调的端点
+      const code = parsedUrl.searchParams.get('code');
+      const state = parsedUrl.searchParams.get('state');
+      
+      if (!code || !state) {
+        console.warn('缺少code或state参数');
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '缺少code或state参数' }));
+        return;
+      }
+      
+      // 检查wechatOAuth模块是否已加载
+      if (!wechatOAuth || !WechatOAuth) {
+        console.error('处理微信授权回调失败: 微信OAuth服务暂不可用');
+        res.writeHead(503, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '微信OAuth服务暂不可用' }));
+        return;
+      }
+      
+      // 使用异步处理回调逻辑
+      const handleOAuthCallback = async () => {
+        try {
+          if (!wechatOAuth) {
+            // 如果wechatOAuth未初始化，创建一个新实例
+            wechatOAuth = new WechatOAuth();
+          }
+          
+          // 验证state参数
+          const stateInfo = wechatOAuth.verifyState(state);
+          if (!stateInfo) {
+            console.warn('state验证失败');
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: '无效的授权请求' }));
+            return;
+          }
+          
+          const { dialogId } = stateInfo;
+          
+          // 获取access_token
+          const tokenInfo = await wechatOAuth.getAccessToken(code);
+          
+          // 获取用户信息
+          const userInfo = await wechatOAuth.getUserInfo(tokenInfo.access_token, tokenInfo.openid);
+          
+          // 这里可以保存用户信息到数据库
+          console.log(`用户授权成功，openId: ${userInfo.openid}, dialogId: ${dialogId}`);
+          
+          // 生成授权成功后的重定向URL，带上必要的参数，跳转到QA页面
+          const frontendRedirectUrl = `https://www.snq369.cn/snqh5/qa?auto_detected_id=${dialogId}&wechat_authorized=true`;
+          
+          // 重定向到前端页面
+          res.writeHead(302, { 'Location': frontendRedirectUrl });
+          res.end();
+          
+        } catch (error) {
+          console.error('处理微信授权回调失败:', error);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: '处理授权回调失败', message: error.message }));
+        }
+      };
+      
+      // 立即执行异步回调处理
+      handleOAuthCallback();
+      return;
     }
+    
+
+    
+    // 404处理
+    console.log(`路径 ${pathname} 不存在，返回404`);
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
   });
 } else {
   console.error('无法创建HTTPS服务器: SSL凭证未正确加载');
   console.error('请检查证书文件是否存在且格式正确');
 
-  // 在生产环境中，无法创建服务器应该退出
   if (process.env.NODE_ENV === 'production') {
     process.exit(1);
   }
 }
 
-// 启动服务器 - 注意：此服务仅支持HTTPS，监听443端口
+// 启动服务器
 try {
   if (!server) {
     console.error('=== 服务器启动失败 ===');
@@ -259,33 +225,36 @@ try {
     process.exit(1);
   }
   
-  server.listen(port, () => {
-    console.log(`=== 微信服务器验证服务启动成功 ===`);
-    console.log(`监听端口: ${port}`);
-    console.log(`服务类型: HTTPS  (仅支持HTTPS)`);
-    console.log(`服务地址: https://localhost:${port}`);
-    console.log(`生产地址: https://zswd.fzrjxy.com`);
-    console.log(`微信验证路径: / 和 /wechat`);
-    console.log(`(支持在根路径和/wechat路径进行微信服务器验证)`);
-    console.log(`微信验证Token: ${wechatToken}`);
-    console.log(`运行环境: ${process.env.NODE_ENV || 'development'}`);
-
-    // 生成测试用的signature和URL
-    console.log('\n=== 本地测试信息 ===');
-    console.log('微信使用的签名加密算法：');
-    console.log('1. 将token、timestamp、nonce三个参数按字典序排序');
-    console.log('2. 将排序后的三个参数拼接成一个字符串');
-    console.log('3. 对拼接后的字符串进行SHA1加密');
-    console.log('4. 将加密后的字符串作为signature参数');
-
-    // 显示证书信息
-    console.log('\n=== 证书信息 ===');
-    console.log(`私钥路径: ${privateKeyPath}`);
-    console.log(`证书路径: ${certificatePath}`);
-    console.log(`证书状态: 已加载`);
-
-    console.log('\n生成的测试URL（已包含正确的signature）:');
-    const testData = WechatVerify.generateTestSignature();
+  // 动态导入微信OAuth模块
+  const loadWechatOAuth = async () => {
+    try {
+      const modulePath = path.join(process.cwd(), 'src', 'lib', 'wechatOAuth.js');
+      if (fs.existsSync(modulePath)) {
+        console.log('尝试导入微信OAuth模块...');
+        const module = await import(modulePath);
+        wechatOAuth = module.default;
+        WechatOAuth = module.WechatOAuth;
+        console.log('微信OAuth模块导入成功');
+      } else {
+        console.warn('微信OAuth模块不存在，跳过导入');
+      }
+    } catch (error) {
+      console.error('导入微信OAuth模块失败:', error.message);
+    }
+  };
+  
+  // 先加载微信OAuth模块，然后启动服务器
+  loadWechatOAuth().then(() => {
+    server.listen(port, () => {
+      console.log(`=== 微信OAuth服务启动成功 ===`);
+      console.log(`监听端口: ${port}`);
+      console.log(`服务类型: HTTPS`);
+      console.log(`服务地址: https://localhost:${port}`);
+      console.log(`运行环境: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`\n可用API端点:`);
+      console.log(`- GET /api/wechat/auth-url?dialogId=xxx - 获取微信授权URL`);
+      console.log(`- GET /api/wechat/callback - 微信授权回调处理`);
+    });
   });
 
   // 处理端口占用等错误
@@ -302,7 +271,6 @@ try {
       console.error(`错误详情:`, error);
     }
 
-    // 在生产环境中，尝试优雅退出
     if (process.env.NODE_ENV === 'production') {
       console.error('在生产环境中遇到启动错误，程序将退出');
       process.exit(1);
@@ -317,14 +285,12 @@ try {
       process.exit(0);
     });
 
-    // 设置超时强制退出
     setTimeout(() => {
       console.error('服务器关闭超时，强制退出');
       process.exit(1);
     }, 5000);
   };
 
-  // 监听退出信号
   process.on('SIGINT', gracefulShutdown);
   process.on('SIGTERM', gracefulShutdown);
 
@@ -333,19 +299,3 @@ try {
   console.error(error);
   process.exit(1);
 }
-
-console.log('=== 微信公众平台配置信息 ===');
-console.log('1. 填写服务器配置:');
-console.log('   - 服务器地址(URL): https://zswd.fzrjxy.com/  或  https://zswd.fzrjxy.com/wechat');
-console.log('   - 注意: 建议使用根路径(/)以匹配微信服务器的请求模式');
-console.log(`   - Token: ${wechatToken}`);
-console.log('   - 消息加解密方式: 明文模式');
-console.log('   - 编码格式: UTF-8');
-console.log('\n2. 验证服务器地址的有效性:');
-console.log('   - 配置完成后点击"提交"按钮');
-console.log('   - 微信服务器会发送GET请求到您的服务器地址');
-console.log('   - 本服务会自动验证请求并返回正确的echostr');
-console.log('\n3. 配置完成后:');
-console.log('   - 您的服务器将能够接收微信用户消息');
-console.log('   - 可以通过POST /wechat端点处理微信消息推送');
-console.log('   - 确保服务器24小时在线以接收微信消息');

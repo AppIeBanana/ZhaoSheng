@@ -154,16 +154,51 @@ docker-compose up -d --build
 
 详细配置请查看项目根目录下的 `nginx.conf` 文件。
 
-### API配置
+### 环境变量配置
 
-系统集成了Coze API，相关配置位于 `src/lib/api.ts` 文件中：
+为了提高安全性，敏感信息如API密钥、Token等已移至环境变量管理。项目提供了 `.env.example` 模板文件，您可以基于此创建自己的环境配置。
+
+### 配置步骤
+
+1. 复制环境变量模板文件
+```bash
+cp .env.example .env
+```
+
+2. 根据您的实际情况修改 `.env` 文件中的配置值
+
+3. **重要**：确保 `.env` 文件不被提交到版本控制系统（已在 `.gitignore` 中配置）
+
+### 主要环境变量说明
+
+- **微信相关**：
+  - `WECHAT_TOKEN`：微信服务器验证Token
+  - `WECHAT_APPID`：微信应用ID
+  - `WECHAT_APPSECRET`：微信应用密钥
+  - `WECHAT_REDIRECT_URI`：微信授权回调地址
+
+- **Coze API相关**：
+  - `COZE_AUTH_TOKEN`：Coze API授权令牌
+  - `COZE_API_URL`：Coze API接口地址
+  - `COZE_BOT_ID`：机器人ID
+  - `COZE_WORKFLOW_ID`：工作流ID
+
+- **服务器相关**：
+  - `NODE_ENV`：运行环境（development/production）
+  - `PORT`：服务端口
+  - `SSL_CERT_PATH`：SSL证书路径
+  - `SSL_KEY_PATH`：SSL私钥路径
+
+### 开发环境配置
+
+在开发环境中，系统会使用默认值作为备选，确保开发工作顺利进行。但在生产环境中，建议配置所有必要的环境变量。
+
+### 代码中的配置读取
+
+所有配置通过 `src/lib/config.ts` 统一管理，使用以下模式从环境变量读取：
 
 ```typescript
-// Coze API配置
-const apiUrl = 'https://api.coze.cn/v3/chat';
-const authToken = 'sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU';
-const botId = "7553550342269550632";
-const workflowId = "7553548989958930470";
+const CONFIG_VALUE = process.env.ENV_VARIABLE_NAME || 'default_value';
 ```
 
 如果需要更换API密钥或调整其他配置，请修改该文件。
@@ -194,15 +229,14 @@ const workflowId = "7553548989958930470";
 
 ## API集成
 
-系统通过Coze API实现智能问答功能，主要流程如下：
+系统通过Coze API实现智能问答功能，配置已移至环境变量管理。详细实现请参考 `src/lib/api.ts` 文件中的 `sendMessageToAPIStream` 函数。
 
-1. 收集考生信息并保存到React上下文
-2. 用户输入问题或选择推荐问题
-3. 调用 `sendMessageToAPIStream` 函数，发送问题和学生信息到Coze API
-4. 接收流式响应并实时更新UI
-5. 展示完整的AI回答
+### API调用流程
 
-详细实现请参考 `src/lib/api.ts` 文件中的 `sendMessageToAPIStream` 函数。
+1. 应用从环境变量读取Coze API配置
+2. 前端组件通过 `sendMessageToAPIStream` 函数发送消息
+3. 系统接收流式响应并实时更新UI
+4. 支持根据学生信息（考试类型、省份、分数等）提供个性化回答
 
 ## 注意事项
 

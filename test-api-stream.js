@@ -1,4 +1,7 @@
 // 这个脚本用于测试Coze API的流式响应
+// 首先加载环境变量
+require('dotenv').config();
+
 console.log('开始测试Coze API流式响应...');
 
 // 模拟学生数据
@@ -13,12 +16,11 @@ const mockStudentData = {
 const message = '学校的招生计划是多少？';
 const userId = 'test_user_id';
 
-// API配置 - 可以直接从配置文件导入，或者保持硬编码用于独立测试
-// 如果需要导入配置文件，请确保路径正确
-const apiUrl = 'https://api.coze.cn/v3/chat';
-const authToken = 'sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU';
-const botId = '7553550342269550632';
-const workflowId = '7553548989958930470';
+// API配置 - 从环境变量读取，没有则使用默认值
+const apiUrl = process.env.COZE_API_URL || 'https://api.coze.cn/v3/chat';
+const authToken = process.env.COZE_AUTH_TOKEN || 'sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU';
+const botId = process.env.COZE_BOT_ID || '7553550342269550632';
+const workflowId = process.env.COZE_WORKFLOW_ID || '7553548989958930470';
 
 // 注意：在实际应用中，这些配置应该从配置文件中导入
 // 例如: const { API_CONFIG } = require('./src/lib/config');

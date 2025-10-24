@@ -48,10 +48,10 @@ install_dependencies:
   artifacts:
     paths:
       - node_modules/
-    cache:
-      key: "${CI_COMMIT_REF_SLUG}-node_modules"
-      paths:
-        - node_modules/
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-node_modules"
+    paths:
+      - node_modules/
   tags:
     - docker
 

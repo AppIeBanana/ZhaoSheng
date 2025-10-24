@@ -176,7 +176,7 @@ pipeline {
                             echo ${SSH_PASSPHRASE} | ssh-add ${SSH_KEY}
                             
                             # 确保部署目录存在
-                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} 'mkdir -p ${DEPLOY_PATH}'
+                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
                             
                             # 复制Docker镜像
                             echo '复制Docker镜像到服务器...'
@@ -189,7 +189,7 @@ pipeline {
                             
                             # 在部署服务器上加载镜像并启动服务
                             echo '在服务器上部署应用...'
-                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} << 'EOF'
+                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} << EOF
                                 echo '开始部署应用...'
                                 # 进入部署目录
                                 cd ${DEPLOY_PATH}

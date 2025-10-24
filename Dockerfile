@@ -1,5 +1,5 @@
 # Build stage
-# 使用指定域名拉取镜像
+# Use specified domain to pull image
 FROM node:lts-jod AS build
 
 WORKDIR /app
@@ -19,7 +19,7 @@ COPY . .
 RUN pnpm run build
 
 # Production stage
-# 使用指定域名拉取镜像
+# Use specified domain to pull image
 FROM nginx:stable-perl
 
 # Copy custom nginx config

@@ -119,67 +119,64 @@ deploy_to_server:
     - scp nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
     
     # 在部署服务器上执行部署命令
-    - ssh ${SSH_USERNAME}@${DEPLOY_SERVER} << EOF
-      echo '开始部署应用...'
-      cd ${DEPLOY_PATH}
-      
-      # 停止并移除旧容器
-      echo '停止并移除旧容器...'
-      docker-compose down || true
-      
-      # 优先加载本地基础镜像文件
-      echo '优先加载本地基础镜像文件...'
-      if [ -f "${DEPLOY_PATH}/node-lts-jod.tar" ]; then
-        echo '发现本地Node基础镜像文件，正在加载...'
-        docker load -i "${DEPLOY_PATH}/node-lts-jod.tar" || echo 'Node基础镜像加载失败，将继续部署'
+    - ssh ${SSH_USERNAME}@${DEPLOY_SERVER} '
+        echo "开始部署应用...";
+        cd ${DEPLOY_PATH};
         
-        # 为加载的镜像添加指定域名的标签
-        if docker images | grep -q 'node:lts-jod' || docker images | grep -q 'library/node:lts-jod'; then
-          echo '为Node镜像添加指定域名标签...'
-          docker tag node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || \
-          docker tag library/node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || \
-          echo 'Node镜像标签设置失败，但将继续部署'
-        fi
-      fi
-      
-      # 加载Nginx基础镜像
-      if [ -f "${DEPLOY_PATH}/nginx-stable-perl.tar" ]; then
-        echo '发现本地Nginx基础镜像文件，正在加载...'
-        docker load -i "${DEPLOY_PATH}/nginx-stable-perl.tar" || echo 'Nginx基础镜像加载失败，将继续部署'
+        # 停止并移除旧容器
+        echo "停止并移除旧容器...";
+        docker-compose down || true;
         
-        # 为加载的镜像添加指定域名的标签
-        if docker images | grep -q 'nginx:stable-perl' || docker images | grep -q 'library/nginx:stable-perl'; then
-          echo '为Nginx镜像添加指定域名标签...'
-          docker tag nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || \
-          docker tag library/nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || \
-          echo 'Nginx镜像标签设置失败，但将继续部署'
-        fi
-      fi
-      
-      # 拉取最新镜像
-      echo '拉取最新应用镜像...'
-      docker pull ${DOCKER_IMAGE_NAME}:latest
-      
-      # 启动新容器
-      echo '启动新容器...'
-      docker-compose up -d
-      
-      # 等待容器启动
-      echo '等待容器启动...'
-      sleep 5
-      
-      # 检查容器状态
-      echo "检查容器状态..."
-      docker ps -f "name=${DOCKER_CONTAINER_NAME}"
-      
-      # 清理旧镜像
-      echo '清理旧镜像...'
-      docker system prune -f
-      
-      # 简化验证 - 仅显示容器状态
-      echo "部署完成，容器状态："
-      docker ps -f "name=${DOCKER_CONTAINER_NAME}" || echo "容器状态检查跳过"
-      EOF
+        # 优先加载本地基础镜像文件
+        echo "优先加载本地基础镜像文件...";
+        
+        # 加载Node基础镜像
+        if [ -f "${DEPLOY_PATH}/node-lts-jod.tar" ]; then
+          echo "发现本地Node基础镜像文件，正在加载...";
+          docker load -i "${DEPLOY_PATH}/node-lts-jod.tar" || echo "Node基础镜像加载失败，将继续部署";
+          
+          # 为Node镜像添加指定域名标签
+          if docker images | grep -q "node:lts-jod" || docker images | grep -q "library/node:lts-jod"; then
+            echo "为Node镜像添加指定域名标签...";
+            docker tag node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || 
+            docker tag library/node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || 
+            echo "Node镜像标签设置失败，但将继续部署";
+          fi;
+        fi;
+        
+        # 加载Nginx基础镜像
+        if [ -f "${DEPLOY_PATH}/nginx-stable-perl.tar" ]; then
+          echo "发现本地Nginx基础镜像文件，正在加载...";
+          docker load -i "${DEPLOY_PATH}/nginx-stable-perl.tar" || echo "Nginx基础镜像加载失败，将继续部署";
+          
+          # 为Nginx镜像添加指定域名标签
+          if docker images | grep -q "nginx:stable-perl" || docker images | grep -q "library/nginx:stable-perl"; then
+            echo "为Nginx镜像添加指定域名标签...";
+            docker tag nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || 
+            docker tag library/nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || 
+            echo "Nginx镜像标签设置失败，但将继续部署";
+          fi;
+        fi;
+        
+        # 拉取并启动应用
+        echo "拉取最新应用镜像...";
+        docker pull ${DOCKER_IMAGE_NAME}:latest;
+        
+        echo "启动新容器...";
+        docker-compose up -d;
+        
+        echo "等待容器启动...";
+        sleep 5;
+        
+        echo "检查容器状态...";
+        docker ps -f "name=${DOCKER_CONTAINER_NAME}";
+        
+        echo "清理旧镜像...";
+        docker system prune -f;
+        
+        echo "部署完成，容器状态：";
+        docker ps -f "name=${DOCKER_CONTAINER_NAME}" || echo "容器状态检查跳过";
+      '
   environment:
     name: production
   tags:

@@ -254,11 +254,14 @@ pipeline {
                                 echo '清理旧镜像...'
                                 docker system prune -f
                                 
-                                # 验证部署 - 增加默认值处理，确保变量有整数
-                                CONTAINER_RUNNING=$(docker ps | grep -c "${DOCKER_CONTAINER_NAME}" || echo 0)
-                                # 确保变量不为空
-                                CONTAINER_RUNNING=${CONTAINER_RUNNING:-0}
-                                if [ "$CONTAINER_RUNNING" -ge 1 ]; then
+                                # 验证部署 - 增强变量处理和调试信息
+                                # 使用 $(()) 确保结果是整数类型
+                                CONTAINER_RUNNING=$(( $(docker ps | grep -c "${DOCKER_CONTAINER_NAME}" || echo 0) ))
+                                # 添加调试信息
+                                echo "容器运行状态检查结果: CONTAINER_RUNNING=${CONTAINER_RUNNING}"
+                                
+                                # 使用 -gt 0 进行判断，更加直接
+                                if [ ${CONTAINER_RUNNING} -gt 0 ]; then
                                     echo "部署成功! ${DOCKER_CONTAINER_NAME} 容器正在运行"
                                 else
                                     echo "部署失败! ${DOCKER_CONTAINER_NAME} 容器未正常启动"

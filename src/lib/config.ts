@@ -1,21 +1,29 @@
 // 应用配置文件
-// 从环境变量读取配置，确保敏感信息不硬编码在代码中
+// 所有配置值从环境变量读取，不在代码中硬编码敏感信息
+// 请在 .env 文件中配置
+
+const env = import.meta.env;
 
 // 微信服务器验证配置
 export const WECHAT_CONFIG = {
-  // 微信服务器与开发者服务器验证的Token
-  // 优先从环境变量读取，没有则使用默认值
-  TOKEN: process.env.WECHAT_TOKEN || 'zhaosheng2024',
+  TOKEN: env.VITE_WECHAT_TOKEN || '',
 };
 
 // API配置
 export const API_CONFIG = {
-  // Coze API令牌
-  AUTH_TOKEN: process.env.COZE_AUTH_TOKEN || 'sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU',
-  // Coze API端点
-  API_URL: process.env.COZE_API_URL || 'https://api.coze.cn/v3/chat',
-  // Bot ID
-  BOT_ID: process.env.COZE_BOT_ID || '7553550342269550632',
-  // Workflow ID
-  WORKFLOW_ID: process.env.COZE_WORKFLOW_ID || '7553548989958930470',
+  AUTH_TOKEN: env.VITE_COZE_AUTH_TOKEN || '',
+  API_URL: env.VITE_COZE_API_URL || 'https://api.coze.cn/v3/chat',
+  BOT_ID: env.VITE_COZE_BOT_ID || '',
+  WORKFLOW_ID: env.VITE_COZE_WORKFLOW_ID || '',
 };
+
+// 配置验证：确保必要的环境变量已设置
+if (!API_CONFIG.AUTH_TOKEN) {
+  console.warn('⚠️ 警告: VITE_COZE_AUTH_TOKEN 未设置，请检查环境变量配置');
+}
+if (!API_CONFIG.BOT_ID) {
+  console.warn('⚠️ 警告: VITE_COZE_BOT_ID 未设置，请检查环境变量配置');
+}
+if (!API_CONFIG.WORKFLOW_ID) {
+  console.warn('⚠️ 警告: VITE_COZE_WORKFLOW_ID 未设置，请检查环境变量配置');
+}

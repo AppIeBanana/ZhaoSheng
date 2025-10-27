@@ -27,3 +27,8 @@ dist-ssr
 # SSH keys and private files
 plk741023
 plk741023.pub
+
+# Environment variables
+.env
+.env.local
+.env.*.local

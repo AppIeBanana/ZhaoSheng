@@ -16,8 +16,8 @@ let WechatOAuth;
 const port = 8443;
 
 // SSL证书配置 - 从环境变量读取证书路径
-const privateKeyPath = process.env.SSL_KEY_PATH || '/etc/letsencrypt/live/zswd.fzrjxy.com/privkey.pem'; // 私钥路径
-const certificatePath = process.env.SSL_CERT_PATH || '/etc/letsencrypt/live/zswd.fzrjxy.com/fullchain.pem'; // 证书路径
+const privateKeyPath = process.env.SSL_KEY_PATH; // 私钥路径
+const certificatePath = process.env.SSL_CERT_PATH; // 证书路径
 
 // 微信服务器验证配置 - 从环境变量读取
 const WECHAT_TOKEN = process.env.WECHAT_TOKEN || 'zhaosheng2024'; // 与微信公众平台配置一致
@@ -177,7 +177,7 @@ if (credentials) {
           console.log(`用户授权成功，openId: ${userInfo.openid}, dialogId: ${dialogId}`);
           
           // 生成授权成功后的重定向URL，带上必要的参数，跳转到QA页面
-          const frontendRedirectUrl = `https://www.snq369.cn/snqh5/qa?auto_detected_id=${dialogId}&wechat_authorized=true`;
+          const frontendRedirectUrl = `https://zswd.fzrjxy.com/snqh5/qa?auto_detected_id=${dialogId}&wechat_authorized=true`;
           
           // 重定向到前端页面
           res.writeHead(302, { 'Location': frontendRedirectUrl });

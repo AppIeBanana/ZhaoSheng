@@ -1,92 +1,40 @@
-# 微信服务器验证配置说明
+# 微信服务器配置说明
 
-本文档说明如何配置微信服务器验证功能，用于微信公众平台与开发者服务器的对接。
+本文档说明微信公众平台与服务器的对接配置。
 
-## 配置信息
+## 环境变量配置
 
-### 配置说明
+所有敏感信息通过环境变量配置，不在代码中硬编码。
 
-### Token配置
+### 生产环境配置
 
-**默认Token**: `zhaosheng2024`
+在服务器上设置以下环境变量：
 
-> **注意**: 这是一个3-32位的英文数字组合，符合微信公众平台的要求。
+- `WECHAT_APPID` - 微信公众号 AppID
+- `WECHAT_APPSECRET` - 微信公众号 AppSecret
+- `WECHAT_TOKEN` - 服务器验证 Token（3-32位英文数字组合）
+- `SSL_KEY_PATH` - SSL 私钥路径
+- `SSL_CERT_PATH` - SSL 证书路径
 
-### 使用环境变量配置
-
-为了提高安全性，现在推荐通过环境变量配置敏感信息：
-
-```bash
-# 设置Token环境变量
-WECHAT_TOKEN=your_custom_token node server.js
-
-# 或者设置多个环境变量
-WECHAT_APPID=your_appid WECHAT_APPSECRET=your_appsecret WECHAT_TOKEN=your_token node server.js
-```
-
-### 环境变量文件配置
-
-您也可以创建 `.env` 文件来管理所有环境变量：
-
-1. 复制模板文件：`cp .env.example .env`
-2. 编辑 `.env` 文件，修改相应的配置值
-3. 启动服务时，系统会自动读取这些环境变量
-
-## 配置文件位置
-
-- **配置文件**: `src/lib/config.ts`
-- **验证工具**: `src/lib/wechatVerify.ts`
-- **后端服务**: `server.js`
-
-## 微信公众平台配置步骤
+## 微信公众平台配置
 
 1. 登录[微信公众平台](https://mp.weixin.qq.com/)
 2. 进入「开发」→「基本配置」
-3. 填写以下信息：
-   - **服务器地址(URL)**: `http://你的域名/wechat`
-   - **Token**: `zhaosheng2024`
+3. 填写服务器配置：
+   - **服务器地址(URL)**: `https://你的域名/api/wechat/callback`
+   - **Token**: 与环境变量中的 WECHAT_TOKEN 一致
    - **消息加解密方式**: 明文模式
-4. 点击「提交」按钮，微信会向服务器发送验证请求
+4. 提交配置
 
-## 启动后端服务
+## 配置文件说明
 
-### 前置条件
-
-- Node.js 环境
-- 已安装依赖：`express`
-
-### 启动步骤
-
-1. 安装依赖：
-   ```bash
-   npm install express
-   ```
-
-2. 启动服务：
-   ```bash
-   node server.js
-   ```
-
-3. 服务将在 80 端口启动，这是微信服务器验证的默认端口
-
-### 配置文件位置更新
-
-- **配置文件**: `src/lib/config.ts`（已更新为从环境变量读取配置）
-- **验证工具**: `src/lib/wechatVerify.ts`
-- **后端服务**: `server.js`（已更新为从环境变量读取配置）
+- **前端配置**: `src/lib/config.ts` - 从环境变量读取配置
+- **微信验证**: `src/lib/wechatVerify.ts` - 服务器验证逻辑
+- **后端服务**: `server.js` - OAuth 回调处理
 
 ## 注意事项
 
-1. 确保服务器防火墙已开放80/443端口
-2. 如果使用HTTPS，请配置相应的SSL证书并使用443端口
-3. **重要安全措施**: Token等敏感信息已移至环境变量管理，请避免在代码中硬编码
-4. 定期更新Token以提高安全性
-5. 确保 `.env` 文件不被提交到版本控制系统（已在 `.gitignore` 中配置）
-
-## 开发说明
-
-- 前端代码中的微信相关配置在 `src/lib/config.ts` 中管理
-- 微信验证逻辑封装在 `src/lib/wechatVerify.ts` 中
-- 后端服务 `server.js` 提供了完整的验证端点实现
-
-如需进一步定制或有任何问题，请联系技术支持。
+1. 确保服务器防火墙已开放 443 端口
+2. SSL 证书必须有效且正确配置
+3. 不要在代码或版本控制中包含敏感信息
+4. 定期更新 Token 以提高安全性

@@ -24,13 +24,6 @@ dist-ssr
 *.sw?
 .trae
 
-# Environment variables (contains sensitive information)
-.env
-.env.local
-.env.development
-.env.production
-.env.*.local
-
 # SSH keys and private files
 plk741023
 plk741023.pub

@@ -24,6 +24,9 @@ export default function InfoCollection() {
     score: ""
   });
   
+  const [dialogIdInput, setDialogIdInput] = useState('');
+  const [showManualIdInput, setShowManualIdInput] = useState(false);
+  
   // 处理从后端OAuth回调返回的参数
   useEffect(() => {
     // 检查URL参数中的auto_detected_id
@@ -78,6 +81,22 @@ export default function InfoCollection() {
       navigate({ pathname: '/qa', search: `auto_detected_id=${storedAutoId}` });
     }
   }, [navigate, setStudentData, searchParams]);
+  
+  // 应用手动输入的对话ID
+  const applyManualDialogId = () => {
+    if (dialogIdInput.trim()) {
+      // 检查是否有与该ID关联的学生数据
+      const savedStudentData = localStorage.getItem(`student_data_${dialogIdInput.trim()}`);
+      if (savedStudentData) {
+        try {
+          setStudentData(JSON.parse(savedStudentData));
+        } catch (error) {
+          console.error('Failed to parse saved student data:', error);
+        }
+      }
+      navigate({ pathname: '/qa', search: `dialogId=${dialogIdInput.trim()}` });
+    }
+  };
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -192,24 +211,13 @@ export default function InfoCollection() {
       // 生成新的对话ID（前端生成）
       const dialogId = `dialog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // 将学生数据保存到 localStorage，使用 dialogId 作为 key
-      localStorage.setItem(`student_data_${dialogId}`, JSON.stringify(formData));
-      
-      // 调用后端 API 获取微信授权 URL
-      const response = await fetch(`/api/wechat/auth-url?dialogId=${dialogId}`);
-      
-      if (!response.ok) {
-        throw new Error('获取微信授权链接失败');
-      }
-      
-      const { authUrl } = await response.json();
-      
-      // 跳转到微信授权页面
-      window.location.href = authUrl;
+      // 重定向到QA页面，使用对话ID
+      navigate(`/qa?dialogId=${dialogId}`);
 
     } catch (error) {
       toast.error("提交失败，请重试");
       console.error("Form submission error:", error);
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -223,6 +231,38 @@ export default function InfoCollection() {
         </div>
         <h1 className="text-[clamp(1.5rem,5vw,2rem)] font-bold text-gray-800 mb-2">新生信息查询</h1>
         <p className="text-gray-600">请填写以下信息，以便为您提供个性化咨询</p>
+      </div>
+      
+      {/* 调试模式：手动输入对话ID区域 */}
+      <div className="mb-6">
+        <button
+          onClick={() => setShowManualIdInput(!showManualIdInput)}
+          className="w-full py-2 px-4 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors"
+        >
+          {showManualIdInput ? "隐藏对话ID输入" : "调试模式：手动输入对话ID"}
+        </button>
+        
+        {showManualIdInput && (
+          <div className="mt-3 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+            <div className="flex space-x-2 items-center">
+              <input
+                type="text"
+                placeholder="输入对话ID以加载历史记录"
+                value={dialogIdInput}
+                onChange={(e) => setDialogIdInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && applyManualDialogId()}
+                className="flex-1 px-3 py-2 border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              />
+              <button
+                onClick={applyManualDialogId}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
+              >
+                进入咨询
+              </button>
+            </div>
+            <p className="text-xs text-yellow-700 mt-2">调试模式：输入已有的对话ID可加载历史记录</p>
+          </div>
+        )}
       </div>
       
       {/* Form Card */}

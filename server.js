@@ -64,7 +64,7 @@ try {
 let server;
 if (credentials) {
   console.log('创建HTTPS服务器...');
-  server = https.createServer(credentials, async (req, res) => {
+  server = https.createServer(credentials, (req, res) => {
     const startTime = Date.now();
     const parsedUrl = new URL(req.url, `https://${req.headers.host}`);
     const pathname = parsedUrl.pathname;
@@ -76,18 +76,6 @@ if (credentials) {
     console.log(`方法: ${method}`);
     console.log(`路径: ${pathname}`);
     console.log(`客户端IP: ${req.socket.remoteAddress}`);
-
-    // 设置 CORS 头
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    
-    // 处理 OPTIONS 预检请求
-    if (method === 'OPTIONS') {
-      res.writeHead(200);
-      res.end();
-      return;
-    }
 
     // 重写res.writeHead方法以记录响应状态码
     const originalWriteHead = res.writeHead;
@@ -112,27 +100,19 @@ if (credentials) {
 
       try {
         // 检查wechatOAuth模块是否已加载
-        if (!wechatOAuth) {
+        if (!wechatOAuth || !WechatOAuth) {
           console.error('生成授权URL失败: 微信OAuth服务暂不可用');
           res.writeHead(503, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ error: '微信OAuth服务暂不可用，请稍后重试' }));
+          res.end(JSON.stringify({ error: '微信OAuth服务暂不可用' }));
           return;
         }
 
-        // 检查微信配置是否完整
-        if (!wechatOAuth.appId || !wechatOAuth.appSecret) {
-          console.error('生成授权URL失败: 微信配置不完整');
-          console.error('请检查 .env 文件中的 WECHAT_APPID 和 WECHAT_APPSECRET');
-          res.writeHead(503, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ 
-            error: '微信配置不完整', 
-            message: '请联系管理员配置微信公众号信息' 
-          }));
-          return;
+        if (!wechatOAuth) {
+          // 如果wechatOAuth未初始化，创建一个新实例
+          wechatOAuth = new WechatOAuth();
         }
 
-        // wechatOAuth.generateAuthUrl 返回的是 Promise，需要 await
-        const authUrl = await wechatOAuth.generateAuthUrl(dialogId);
+        const authUrl = wechatOAuth.generateAuthUrl(dialogId);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ authUrl }));
@@ -249,21 +229,14 @@ try {
       if (fs.existsSync(modulePath)) {
         console.log('尝试导入微信OAuth模块...');
         const module = await import(modulePath);
-        wechatOAuth = module.default; // 这是已经实例化的 WechatOAuth 对象
-        WechatOAuth = module.WechatOAuth; // 这是 WechatOAuth 类
+        wechatOAuth = module.default;
+        WechatOAuth = module.WechatOAuth;
         console.log('微信OAuth模块导入成功');
-        console.log('微信配置:', {
-          appId: wechatOAuth.appId ? '已配置' : '未配置',
-          appSecret: wechatOAuth.appSecret ? '已配置' : '未配置',
-          redirectUri: wechatOAuth.redirectUri || '未配置',
-          scope: wechatOAuth.scope || '未配置'
-        });
       } else {
         console.warn('微信OAuth模块不存在，跳过导入');
       }
     } catch (error) {
       console.error('导入微信OAuth模块失败:', error.message);
-      console.error('错误堆栈:', error.stack);
     }
   };
 

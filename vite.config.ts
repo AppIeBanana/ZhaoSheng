@@ -13,7 +13,7 @@ function getPlugins() {
 export default defineConfig({
   plugins: getPlugins(),
   // 添加 base 配置以支持在子路径 /projects/ZhaoSheng 下部署
-  base: '/projects/ZhaoSheng/',
+  base: process.env.NODE_ENV === 'production' ? '/projects/ZhaoSheng/' : '/',
   // 确保构建输出目录与 package.json 中的 build 脚本一致
   build: {
     outDir: 'dist/static',

@@ -19,9 +19,6 @@ const port = 8443;
 const privateKeyPath = process.env.SSL_KEY_PATH; // 私钥路径
 const certificatePath = process.env.SSL_CERT_PATH; // 证书路径
 
-// 微信服务器验证配置 - 从环境变量读取
-const WECHAT_TOKEN = process.env.WECHAT_TOKEN || 'zhaosheng2024'; // 与微信公众平台配置一致
-
 // 读取SSL证书和私钥
 let privateKey, certificate, credentials;
 try {
@@ -56,7 +53,7 @@ try {
   // 无论环境如何，证书加载失败都应提示用户，但只在生产环境中强制退出
   console.error('=== SSL证书加载失败 ===');
   console.error(`请确保证书文件存在且有权限访问: ${privateKeyPath} 和 ${certificatePath}`);
-  
+
   if (process.env.NODE_ENV === 'production') {
     console.error('在生产环境中，证书加载失败将导致程序退出');
     process.exit(1);
@@ -72,17 +69,17 @@ if (credentials) {
     const parsedUrl = new URL(req.url, `https://${req.headers.host}`);
     const pathname = parsedUrl.pathname;
     const method = req.method;
-    
+
     // 记录所有接收到的请求
     console.log(`=== 收到请求 ===`);
     console.log(`时间: ${new Date().toISOString()}`);
     console.log(`方法: ${method}`);
     console.log(`路径: ${pathname}`);
     console.log(`客户端IP: ${req.socket.remoteAddress}`);
-    
+
     // 重写res.writeHead方法以记录响应状态码
     const originalWriteHead = res.writeHead;
-    res.writeHead = function(statusCode, headers) {
+    res.writeHead = function (statusCode, headers) {
       const processingTime = Date.now() - startTime;
       console.log(`=== 响应信息 ===`);
       console.log(`状态码: ${statusCode}`);
@@ -93,14 +90,14 @@ if (credentials) {
     // 微信OAuth授权URL生成端点
     if (pathname === '/api/wechat/auth-url' && method === 'GET') {
       const dialogId = parsedUrl.searchParams.get('dialogId');
-      
+
       if (!dialogId) {
         console.warn('缺少dialogId参数');
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: '缺少dialogId参数' }));
         return;
       }
-      
+
       try {
         // 检查wechatOAuth模块是否已加载
         if (!wechatOAuth || !WechatOAuth) {
@@ -109,17 +106,17 @@ if (credentials) {
           res.end(JSON.stringify({ error: '微信OAuth服务暂不可用' }));
           return;
         }
-        
+
         if (!wechatOAuth) {
           // 如果wechatOAuth未初始化，创建一个新实例
           wechatOAuth = new WechatOAuth();
         }
-        
+
         const authUrl = wechatOAuth.generateAuthUrl(dialogId);
-        
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ authUrl }));
-        
+
         console.log(`成功生成微信授权URL，dialogId: ${dialogId}`);
       } catch (error) {
         console.error('生成授权URL失败:', error);
@@ -127,19 +124,19 @@ if (credentials) {
         res.end(JSON.stringify({ error: '生成授权URL失败', message: error.message }));
       }
       return;
-    } 
+    }
     else if (pathname === '/api/wechat/callback' && method === 'GET') {
       // 处理微信授权回调的端点
       const code = parsedUrl.searchParams.get('code');
       const state = parsedUrl.searchParams.get('state');
-      
+
       if (!code || !state) {
         console.warn('缺少code或state参数');
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: '缺少code或state参数' }));
         return;
       }
-      
+
       // 检查wechatOAuth模块是否已加载
       if (!wechatOAuth || !WechatOAuth) {
         console.error('处理微信授权回调失败: 微信OAuth服务暂不可用');
@@ -147,7 +144,7 @@ if (credentials) {
         res.end(JSON.stringify({ error: '微信OAuth服务暂不可用' }));
         return;
       }
-      
+
       // 使用异步处理回调逻辑
       const handleOAuthCallback = async () => {
         try {
@@ -155,7 +152,7 @@ if (credentials) {
             // 如果wechatOAuth未初始化，创建一个新实例
             wechatOAuth = new WechatOAuth();
           }
-          
+
           // 验证state参数
           const stateInfo = wechatOAuth.verifyState(state);
           if (!stateInfo) {
@@ -164,39 +161,39 @@ if (credentials) {
             res.end(JSON.stringify({ error: '无效的授权请求' }));
             return;
           }
-          
+
           const { dialogId } = stateInfo;
-          
+
           // 获取access_token
           const tokenInfo = await wechatOAuth.getAccessToken(code);
-          
+
           // 获取用户信息
           const userInfo = await wechatOAuth.getUserInfo(tokenInfo.access_token, tokenInfo.openid);
-          
+
           // 这里可以保存用户信息到数据库
           console.log(`用户授权成功，openId: ${userInfo.openid}, dialogId: ${dialogId}`);
-          
+
           // 生成授权成功后的重定向URL，带上必要的参数，跳转到QA页面
           const frontendRedirectUrl = `https://zswd.fzrjxy.com/snqh5/qa?auto_detected_id=${dialogId}&wechat_authorized=true`;
-          
+
           // 重定向到前端页面
           res.writeHead(302, { 'Location': frontendRedirectUrl });
           res.end();
-          
+
         } catch (error) {
           console.error('处理微信授权回调失败:', error);
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: '处理授权回调失败', message: error.message }));
         }
       };
-      
+
       // 立即执行异步回调处理
       handleOAuthCallback();
       return;
     }
-    
 
-    
+
+
     // 404处理
     console.log(`路径 ${pathname} 不存在，返回404`);
     res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -217,14 +214,14 @@ try {
     console.error('=== 服务器启动失败 ===');
     console.error('原因: SSL凭证未正确加载，无法创建HTTPS服务器');
     console.error('请检查证书文件是否存在且格式正确:', privateKeyPath, certificatePath);
-    
+
     if (process.env.NODE_ENV !== 'production') {
       console.warn('在开发环境中，您可以修改server.js中的证书路径以使用测试证书');
     }
-    
+
     process.exit(1);
   }
-  
+
   // 动态导入微信OAuth模块
   const loadWechatOAuth = async () => {
     try {
@@ -242,7 +239,7 @@ try {
       console.error('导入微信OAuth模块失败:', error.message);
     }
   };
-  
+
   // 先加载微信OAuth模块，然后启动服务器
   loadWechatOAuth().then(() => {
     server.listen(port, () => {

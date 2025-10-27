@@ -50,86 +50,38 @@ export default function QAPage() {
     setDialogIdInput(newDialogId);
   };
 
-  // 修改为基于对话ID的用户标识管理逻辑
+  // 简化的用户标识管理逻辑，完全依赖对话ID
   const getUserIdentifier = () => {
-    // 优先使用URL中的对话ID（调试模式）
-    if (currentDialogId) {
-      // 为对话ID添加验证逻辑，防止格式错误
-      const safeDialogId = currentDialogId.replace(/[^a-zA-Z0-9_\-]/g, '');
-      return `dialog_${safeDialogId}`;
+    // 确保有对话ID
+    if (!currentDialogId) {
+      toast.error('缺少对话ID，无法继续');
+      navigate('/');
+      throw new Error('Missing dialog ID');
     }
     
-    // 没有对话ID时，使用之前的逻辑
-    let userId = localStorage.getItem('wechat_user_id');
-    
-    if (!userId) {
-      userId = 'wechat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-      localStorage.setItem('wechat_user_id', userId);
-    }
-    
-    return userId;
+    // 为对话ID添加验证逻辑，防止格式错误
+    const safeDialogId = currentDialogId.replace(/[^a-zA-Z0-9_\-]/g, '');
+    return `dialog_${safeDialogId}`;
   };
   
   const userId = getUserIdentifier();
 
-// 修改加载学生数据和历史消息的useEffect
 useEffect(() => {
-  // 首先检查是否有对话ID
-  if (currentDialogId) {
-    // 尝试从localStorage加载与该ID关联的学生数据
-    const savedStudentData = localStorage.getItem(`student_data_${currentDialogId}`);
-    
-    if (savedStudentData) {
-        try {
-          const parsedData = JSON.parse(savedStudentData);
-          // 如果上下文没有学生数据，则使用本地存储的数据更新上下文
-          if (!studentData && setStudentData) {
-            setStudentData(parsedData);
-          }
-        } catch (error) {
-          console.error('Failed to parse saved student data:', error);
-          toast.warning('检测到数据格式问题，建议创建新对话');
-        }
-      } else {
-        // 没有找到与对话ID关联的学生数据
-        toast.warning(`未找到与对话ID ${currentDialogId} 关联的学生信息，可能需要重新填写`);
-      }
-    
-    // 尝试从本地存储加载历史消息
-    const savedMessages = loadMessagesFromLocalStorage(userId);
-    
-    if (savedMessages.length > 0) {
-      setMessages(savedMessages);
-    } else {
-      // 添加欢迎消息
-      setMessages([{
-        id: 'welcome',
-        content: `Hi~ 我是福软小X\n非常高兴认识您。您有哪些想咨询的问题呢？`,
-        sender: 'bot',
-        timestamp: new Date()
-      }]);
-    }
-  } else if (!studentData) {
-    // 如果没有对话ID且没有学生数据，则重定向到信息收集页
-    toast.error("请先填写学生信息");
+  // 确保有对话ID
+  if (!currentDialogId) {
+    toast.error("缺少对话ID，请先填写学生信息");
     navigate('/');
-  } else {
-    // 原有逻辑：有学生数据但没有对话ID
-    const savedMessages = loadMessagesFromLocalStorage(userId);
-    
-    if (savedMessages.length > 0) {
-      setMessages(savedMessages);
-    } else {
-      // 添加欢迎消息
-      setMessages([{
-        id: 'welcome',
-        content: `Hi~ 我是福软小X\n非常高兴认识您。您有哪些想咨询的问题呢？`,
-        sender: 'bot',
-        timestamp: new Date()
-      }]);
-    }
+    return;
   }
-}, [studentData, setStudentData, navigate, userId, currentDialogId]);
+  
+  // 添加欢迎消息
+  setMessages([{
+    id: 'welcome',
+    content: `Hi~ 我是福软小X\n非常高兴认识您。您有哪些想咨询的问题呢？`,
+    sender: 'bot',
+    timestamp: new Date()
+  }]);
+}, [currentDialogId, navigate]);
 
   // Scroll to bottom when messages update
   useEffect(() => {
@@ -215,12 +167,9 @@ useEffect(() => {
       console.error("API error:", error);
     } finally {
       setIsLoading(false);
-      // 保存到本地存储
+      // 延迟保存消息以确保界面更新完成
       setTimeout(() => {
-        setMessages(prevMessages => {
-          saveMessagesToLocalStorage(userId, prevMessages);
-          return prevMessages;
-        });
+        saveMessagesToLocalStorage();
       }, 100);
     }
   };
@@ -247,28 +196,42 @@ useEffect(() => {
     setDisplayedQuestions(getRandomQuestions(questionsByCategory[index], 5));
   };
 
-  // 在QAPage.tsx中添加本地存储功能
-const saveMessagesToLocalStorage = (userId: string, messages: Message[]) => {
-  localStorage.setItem(`chat_history_${userId}`, JSON.stringify({
-    messages: messages.map(msg => ({ ...msg, timestamp: msg.timestamp.toISOString() })),
-    lastUpdated: new Date().toISOString()
-  }));
-};
+  // 保存消息到本地存储
+  const saveMessagesToLocalStorage = () => {
+    if (!currentDialogId) return;
+    
+    try {
+      // 将消息保存到本地存储，使用对话ID作为键
+      localStorage.setItem(`chat_history_${currentDialogId}`, JSON.stringify(messages));
+    } catch (error) {
+      console.error("Failed to save messages to local storage:", error);
+    }
+  };
 
-const loadMessagesFromLocalStorage = (userId: string): Message[] => {
-  const saved = localStorage.getItem(`chat_history_${userId}`);
-  if (!saved) return [];
-  try {
-    const data = JSON.parse(saved);
-    return data.messages.map((msg: any) => ({
-      ...msg,
-      timestamp: new Date(msg.timestamp)
-    }));
-  } catch (e) {
-    console.error('Failed to load chat history:', e);
-    return [];
-  }
-};
+  // 从本地存储加载消息
+  const loadMessagesFromLocalStorage = () => {
+    if (!currentDialogId) return;
+    
+    try {
+      const savedMessages = localStorage.getItem(`chat_history_${currentDialogId}`);
+      if (savedMessages) {
+        const parsedMessages = JSON.parse(savedMessages);
+        // 确保消息格式正确，包含timestamp字段
+        const formattedMessages = parsedMessages.map((msg: any) => ({
+          ...msg,
+          timestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+        }));
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error("Failed to load messages from local storage:", error);
+    }
+  };
+  
+  // 使用useEffect在组件挂载或对话ID变化时加载历史消息
+  useEffect(() => {
+    loadMessagesFromLocalStorage();
+  }, [currentDialogId]);
 
 
   

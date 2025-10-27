@@ -212,7 +212,7 @@ export default function InfoCollection() {
       const dialogId = `dialog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       // 重定向到QA页面，使用对话ID
-      navigate(`/qa?dialogId=${dialogId}`);
+      navigate(`/wechat-verification?dialogId=${dialogId}`);
 
     } catch (error) {
       toast.error("提交失败，请重试");

@@ -4,7 +4,7 @@
 import crypto from 'crypto';
 import https from 'https';
 import querystring from 'querystring';
-import { createClient } from 'redis';
+// import { createClient } from 'redis'; // 已注释：测试环境暂不使用 Redis
 
 // 从环境变量或配置文件获取微信配置
 class WechatOAuth {
@@ -16,23 +16,25 @@ class WechatOAuth {
     this.redirectUri = process.env.WECHAT_REDIRECT_URI;
     this.scope = process.env.WECHAT_SCOPE;
 
-    // 创建Redis客户端连接
-    this.redisClient = createClient({
-      url: 'redis://172.21.9.233:6379',
-      connectTimeout: 5000
-    });
+    // ===== 已注释：测试环境暂不使用 Redis =====
+    // // 创建Redis客户端连接
+    // this.redisClient = createClient({
+    //   url: 'redis://172.21.9.233:6379',
+    //   connectTimeout: 5000
+    // });
 
-    // 处理Redis连接错误
-    this.redisClient.on('error', (err) => {
-      console.error('Redis客户端错误:', err);
-    });
+    // // 处理Redis连接错误
+    // this.redisClient.on('error', (err) => {
+    //   console.error('Redis客户端错误:', err);
+    // });
 
-    // 连接Redis
-    this.redisClient.connect().catch(err => {
-      console.error('Redis连接失败:', err);
-    });
+    // // 连接Redis
+    // this.redisClient.connect().catch(err => {
+    //   console.error('Redis连接失败:', err);
+    // });
+    // ===== Redis 注释结束 =====
 
-    console.log('微信OAuth配置初始化完成');
+    console.log('微信OAuth配置初始化完成（测试模式：无Redis）');
   }
 
   /**
@@ -46,18 +48,22 @@ class WechatOAuth {
     const randomString = crypto.randomBytes(16).toString('hex');
     const state = `${dialogId}_${timestamp}_${randomString}`;
 
-    // 将state参数存储在Redis中，设置过期时间（10分钟）
-    try {
-      await this.redisClient.set(
-        `wechat:state:${state}`,
-        JSON.stringify({ dialogId, timestamp }),
-        { EX: 600 }
-      );
-      console.log(`State参数已存储到Redis: ${state}`);
-    } catch (error) {
-      console.error('存储state到Redis失败:', error);
-      throw new Error('生成授权URL失败: 无法存储state参数');
-    }
+    // ===== 已注释：测试环境跳过 Redis 存储 =====
+    // // 将state参数存储在Redis中，设置过期时间（10分钟）
+    // try {
+    //   await this.redisClient.set(
+    //     `wechat:state:${state}`,
+    //     JSON.stringify({ dialogId, timestamp }),
+    //     { EX: 600 }
+    //   );
+    //   console.log(`State参数已存储到Redis: ${state}`);
+    // } catch (error) {
+    //   console.error('存储state到Redis失败:', error);
+    //   throw new Error('生成授权URL失败: 无法存储state参数');
+    // }
+    // ===== Redis 存储注释结束 =====
+    
+    console.log(`State参数已生成（测试模式：未存储到Redis）: ${state}`);
 
     // 构建微信授权URL
     const baseUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize';
@@ -82,34 +88,61 @@ class WechatOAuth {
    * @returns {Promise<object|null>} - 包含dialogId的对象或null
    */
   async verifyState(state) {
+    // ===== 警告：测试模式 - 跳过完整的 state 验证 =====
+    // 生产环境必须启用完整的 Redis 验证以确保安全性
+    // ===== 
+    
     if (!state) {
       console.warn('无效的state参数: 参数为空');
       return null;
     }
 
     try {
-      // 从Redis获取state数据
-      const stateDataStr = await this.redisClient.get(`wechat:state:${state}`);
-      if (!stateDataStr) {
-        console.warn('state参数不存在或已过期');
+      // 测试模式：直接从 state 字符串中提取 dialogId
+      // state 格式: dialogId_timestamp_randomString
+      const parts = state.split('_');
+      if (parts.length < 3) {
+        console.warn('state参数格式不正确');
         return null;
       }
 
-      const stateData = JSON.parse(stateDataStr);
+      const dialogId = parts[0];
+      const timestamp = parseInt(parts[1]);
       const now = Date.now();
 
-      // 检查state是否在有效期内（Redis已设置过期，但双重验证更安全）
-      if (now - stateData.timestamp > 10 * 60 * 1000) {
-        console.warn('state参数已过期');
-        await this.redisClient.del(`wechat:state:${state}`);
+      // 基本的时间戳检查（10分钟有效期）
+      if (now - timestamp > 10 * 60 * 1000) {
+        console.warn('state参数已过期（基于时间戳检查）');
         return null;
       }
 
-      // 验证通过后，从Redis中删除该state（防止重复使用）
-      await this.redisClient.del(`wechat:state:${state}`);
+      console.log(`state验证成功（测试模式），dialogId: ${dialogId}`);
+      return { dialogId };
 
-      console.log(`state验证成功，dialogId: ${stateData.dialogId}`);
-      return { dialogId: stateData.dialogId };
+      // ===== 原 Redis 验证代码已注释 =====
+      // // 从Redis获取state数据
+      // const stateDataStr = await this.redisClient.get(`wechat:state:${state}`);
+      // if (!stateDataStr) {
+      //   console.warn('state参数不存在或已过期');
+      //   return null;
+      // }
+
+      // const stateData = JSON.parse(stateDataStr);
+      // const now = Date.now();
+
+      // // 检查state是否在有效期内（Redis已设置过期，但双重验证更安全）
+      // if (now - stateData.timestamp > 10 * 60 * 1000) {
+      //   console.warn('state参数已过期');
+      //   await this.redisClient.del(`wechat:state:${state}`);
+      //   return null;
+      // }
+
+      // // 验证通过后，从Redis中删除该state（防止重复使用）
+      // await this.redisClient.del(`wechat:state:${state}`);
+
+      // console.log(`state验证成功，dialogId: ${stateData.dialogId}`);
+      // return { dialogId: stateData.dialogId };
+      // ===== Redis 验证注释结束 =====
     } catch (error) {
       console.error('验证state参数失败:', error);
       return null;

@@ -20,6 +20,8 @@ pipeline {
         DEPLOY_SERVER = '10.26.1.82'
         DEPLOY_PATH = '/projects/ZhaoSheng'
         GITLAB_REPO = 'http://172.21.9.233:18080/Wanzhong/zhaosheng.git'
+        // 后端服务配置
+        BACKEND_SERVICE_NAME = 'zhaosheng-backend'
     }
     
     // 构建参数，可在Jenkins界面手动触发时修改
@@ -166,7 +168,11 @@ pipeline {
                     sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
-                    withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', passphraseVariable: 'SSH_PASSPHRASE', usernameVariable: 'SSH_USERNAME')]) {
+                    // 添加 .env 文件凭证（需要在 Jenkins 凭证管理中上传 .env 文件，ID为 'zhaosheng-env-file'）
+                    withCredentials([
+                        sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', passphraseVariable: 'SSH_PASSPHRASE', usernameVariable: 'SSH_USERNAME'),
+                        file(credentialsId: 'zhaosheng-env-file', variable: 'ENV_FILE')
+                    ]) {
                         // 使用ssh-agent自动处理密钥passphrase
                         sh '''
                             # 启动ssh-agent
@@ -175,25 +181,52 @@ pipeline {
                             # 添加私钥到ssh-agent，使用SSH_PASSPHRASE环境变量提供密码
                             echo ${SSH_PASSPHRASE} | ssh-add ${SSH_KEY}
                             
-                            # 确保部署目录存在
-                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
+                            # 确保部署目录和子目录存在
+                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}/src/lib"
                             
-                            # 复制Docker镜像
+                            # === 复制前端相关文件 ===
                             echo '复制Docker镜像到服务器...'
                             scp -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
                             
-                            # 复制必要的配置文件
-                            echo '复制配置文件到服务器...'
+                            echo '复制前端配置文件到服务器...'
                             scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
                             scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
                             
+                            # === 复制后端相关文件 ===
+                            echo '复制后端代码到服务器...'
+                            scp -o StrictHostKeyChecking=no server.js ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/
+                            scp -o StrictHostKeyChecking=no package.json ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/
+                            scp -o StrictHostKeyChecking=no pnpm-lock.yaml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/ || echo "pnpm-lock.yaml 不存在，跳过"
+                            
+                            # 复制 src/lib 目录（wechatOAuth.js 等依赖库）
+                            echo '复制依赖库文件...'
+                            scp -r -o StrictHostKeyChecking=no src/lib ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/src/ || echo "src/lib 复制失败，跳过"
+                            
+                            # 复制 .env 配置文件（从 Jenkins 凭证）
+                            echo '复制环境变量配置文件...'
+                            scp -o StrictHostKeyChecking=no ${ENV_FILE} ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/.env
+                            
                             # 在部署服务器上加载镜像并启动服务
                             echo '在服务器上部署应用...'
-                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} << EOF
-                                echo '开始部署应用...'
-                                # 进入部署目录
+                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} << 'EOFMAIN'
+                                echo "=========================================="
+                                echo "开始部署招生项目"
+                                echo "=========================================="
                                 cd ${DEPLOY_PATH}
-                                  
+                                
+                                # 设置 .env 文件安全权限
+                                echo ""
+                                echo "设置环境变量文件权限..."
+                                chmod 600 .env
+                                chown $(whoami):$(whoami) .env || true
+                                echo "✓ .env 文件权限已设置为 600"
+                                
+                                # === 部署前端 Docker 容器 ===
+                                echo ""
+                                echo "=========================================="
+                                echo "部署前端 Docker 容器"
+                                echo "=========================================="
+                                
                                 # 停止并移除旧容器
                                 echo '停止并移除旧容器...'
                                 docker-compose down || true
@@ -247,35 +280,92 @@ pipeline {
                                 sleep 5
                                 
                                 # 检查容器状态
-                                echo "检查容器状态..."
+                                echo "前端容器状态："
                                 docker ps -f "name=${DOCKER_CONTAINER_NAME}"
                                 
+                                # === 部署 Node.js 后端服务 ===
+                                echo ""
+                                echo "=========================================="
+                                echo "部署 Node.js 后端服务"
+                                echo "=========================================="
+                                
+                                # 检查并安装/更新依赖
+                                if [ ! -d "node_modules" ] || [ package.json -nt node_modules ]; then
+                                    echo '安装/更新 Node.js 依赖...'
+                                    if command -v pnpm &> /dev/null; then
+                                        pnpm install --prod
+                                    else
+                                        npm install --production
+                                    fi
+                                    echo "✓ 依赖安装完成"
+                                else
+                                    echo '✓ Node.js 依赖已是最新'
+                                fi
+                                
+                                # 使用 PM2 管理后端服务
+                                if command -v pm2 &> /dev/null; then
+                                    echo '使用 PM2 管理后端服务...'
+                                    
+                                    # 检查进程是否存在
+                                    if pm2 describe ${BACKEND_SERVICE_NAME} > /dev/null 2>&1; then
+                                        echo '重启现有后端服务...'
+                                        pm2 restart ${BACKEND_SERVICE_NAME} --update-env
+                                    else
+                                        echo '首次启动后端服务...'
+                                        pm2 start server.js --name ${BACKEND_SERVICE_NAME} --time
+                                    fi
+                                    
+                                    # 保存 PM2 配置
+                                    pm2 save
+                                    
+                                    # 显示服务状态
+                                    echo ""
+                                    echo "后端服务状态："
+                                    pm2 describe ${BACKEND_SERVICE_NAME}
+                                    
+                                    echo "✓ 后端服务已启动"
+                                else
+                                    echo "=========================================="
+                                    echo "⚠️  警告: 未检测到 PM2"
+                                    echo "=========================================="
+                                    echo "后端服务未自动启动！"
+                                    echo ""
+                                    echo "请手动安装 PM2 并启动服务："
+                                    echo "  1. npm install -g pm2"
+                                    echo "  2. pm2 start server.js --name ${BACKEND_SERVICE_NAME}"
+                                    echo "  3. pm2 save"
+                                    echo "  4. pm2 startup (设置开机自启)"
+                                    echo "=========================================="
+                                fi
+                                
                                 # 清理旧镜像
+                                echo ""
                                 echo '清理旧镜像...'
                                 docker system prune -f
                                 
-                                # 验证部署代码已注释掉 - 修复算术表达式错误
-                                # 获取容器运行数量，确保结果为整数
-                                # CONTAINER_COUNT=$(docker ps | grep -c "${DOCKER_CONTAINER_NAME}" || echo 0)
-                                # CONTAINER_RUNNING=$CONTAINER_COUNT
-                                # 添加调试信息
-                                # echo "容器运行状态检查结果: CONTAINER_RUNNING=${CONTAINER_RUNNING}"
+                                echo ""
+                                echo "=========================================="
+                                echo "✓ 部署完成!"
+                                echo "=========================================="
+                                echo "前端访问地址: https://zswd.fzrjxy.com"
+                                echo "后端服务端口: 8443 (HTTPS)"
+                                echo "=========================================="
                                 
-                                # 使用 -gt 0 进行判断，更加直接
-                                # if [ ${CONTAINER_RUNNING} -gt 0 ]; then
-                                #     echo "部署成功! ${DOCKER_CONTAINER_NAME} 容器正在运行"
-                                # else
-                                #     echo "部署失败! ${DOCKER_CONTAINER_NAME} 容器未正常启动"
-                                #     # 显示更详细的容器状态信息用于调试
-                                #     echo "详细容器信息："
-                                #     docker ps -a | grep "${DOCKER_CONTAINER_NAME}" || echo "容器未找到"
-                                #     exit 1
-                                # fi
-                                
-                                # 简化验证 - 仅显示容器状态
-                                echo "部署完成，容器状态："
-                                docker ps -f "name=${DOCKER_CONTAINER_NAME}" || echo "容器状态检查跳过"
-EOF
+                                # 最终状态检查
+                                echo ""
+                                echo "最终状态检查："
+                                echo "----------------------------------------"
+                                echo "Docker 容器:"
+                                docker ps -f "name=${DOCKER_CONTAINER_NAME}" --format "  - {{.Names}}: {{.Status}}"
+                                echo ""
+                                echo "Node.js 后端:"
+                                if command -v pm2 &> /dev/null; then
+                                    pm2 describe ${BACKEND_SERVICE_NAME} 2>&1 | grep -E 'status|uptime|restarts' || echo "  - 状态: 未运行或未找到"
+                                else
+                                    echo "  - PM2 未安装，无法检查状态"
+                                fi
+                                echo "=========================================="
+EOFMAIN
                         '''
                     }
                     
@@ -290,14 +380,23 @@ EOF
     post {
         // 构建成功时
         success {
-            echo '构建和部署成功！'
-            echo '应用已成功部署到 http://${DEPLOY_SERVER}:${DEPLOY_PATH}'
+            echo '=========================================='
+            echo '✓ 构建和部署成功！'
+            echo '=========================================='
+            echo "应用已成功部署到 ${DEPLOY_SERVER}"
+            echo "前端访问: https://zswd.fzrjxy.com"
+            echo "部署路径: ${DEPLOY_PATH}"
+            echo '=========================================='
             // 可以添加通知，例如发送邮件或Slack消息
         }
         
         // 构建失败时
         failure {
-            echo '构建或部署失败！'
+            echo '=========================================='
+            echo '✗ 构建或部署失败！'
+            echo '=========================================='
+            echo '请检查构建日志获取详细错误信息'
+            echo '=========================================='
             // 可以添加失败通知
         }
         

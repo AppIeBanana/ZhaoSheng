@@ -3,8 +3,8 @@
 
 import crypto from 'crypto';
 import https from 'https';
-import url from 'url';
 import querystring from 'querystring';
+import { createClient } from 'redis';
 
 // 从环境变量或配置文件获取微信配置
 class WechatOAuth {
@@ -12,12 +12,25 @@ class WechatOAuth {
     // 使用传入的配置或默认值
     this.appId = process.env.WECHAT_APPID;
     this.appSecret = process.env.WECHAT_APPSECRET;
-    // 重定向URI应该指向服务器的回调端点，而不是前端页面
+    // 重定向URI指向服务器的回调端点
     this.redirectUri = process.env.WECHAT_REDIRECT_URI;
     this.scope = process.env.WECHAT_SCOPE;
 
-    // 用于存储state参数的缓存（生产环境应使用Redis等持久化存储）
-    this.stateCache = new Map();
+    // 创建Redis客户端连接
+    this.redisClient = createClient({
+      url: 'redis://172.21.9.233:6379',
+      connectTimeout: 5000
+    });
+
+    // 处理Redis连接错误
+    this.redisClient.on('error', (err) => {
+      console.error('Redis客户端错误:', err);
+    });
+
+    // 连接Redis
+    this.redisClient.connect().catch(err => {
+      console.error('Redis连接失败:', err);
+    });
 
     console.log('微信OAuth配置初始化完成');
   }
@@ -25,23 +38,26 @@ class WechatOAuth {
   /**
    * 生成安全的state参数并返回授权URL
    * @param {string} dialogId - 对话ID，用于后续关联
-   * @returns {string} - 微信授权URL
+   * @returns {Promise<string>} - 微信授权URL
    */
-  generateAuthUrl(dialogId) {
+  async generateAuthUrl(dialogId) {
     // 生成随机的state参数，包含时间戳以防止重放攻击
     const timestamp = Date.now();
     const randomString = crypto.randomBytes(16).toString('hex');
     const state = `${dialogId}_${timestamp}_${randomString}`;
 
-    // 将state参数存储在缓存中，设置过期时间（10分钟）
-    this.stateCache.set(state, {
-      dialogId,
-      timestamp,
-      createdAt: new Date()
-    });
-
-    // 定期清理过期的state参数
-    this.cleanupExpiredStates();
+    // 将state参数存储在Redis中，设置过期时间（10分钟）
+    try {
+      await this.redisClient.set(
+        `wechat:state:${state}`,
+        JSON.stringify({ dialogId, timestamp }),
+        { EX: 600 }
+      );
+      console.log(`State参数已存储到Redis: ${state}`);
+    } catch (error) {
+      console.error('存储state到Redis失败:', error);
+      throw new Error('生成授权URL失败: 无法存储state参数');
+    }
 
     // 构建微信授权URL
     const baseUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize';
@@ -63,29 +79,41 @@ class WechatOAuth {
   /**
    * 验证state参数是否有效
    * @param {string} state - 从微信返回的state参数
-   * @returns {object|null} - 包含dialogId的对象或null
+   * @returns {Promise<object|null>} - 包含dialogId的对象或null
    */
-  verifyState(state) {
-    if (!state || !this.stateCache.has(state)) {
-      console.warn('无效的state参数或state已过期');
+  async verifyState(state) {
+    if (!state) {
+      console.warn('无效的state参数: 参数为空');
       return null;
     }
 
-    const stateData = this.stateCache.get(state);
-    const now = Date.now();
+    try {
+      // 从Redis获取state数据
+      const stateDataStr = await this.redisClient.get(`wechat:state:${state}`);
+      if (!stateDataStr) {
+        console.warn('state参数不存在或已过期');
+        return null;
+      }
 
-    // 检查state是否在10分钟有效期内
-    if (now - stateData.timestamp > 10 * 60 * 1000) {
-      console.warn('state参数已过期');
-      this.stateCache.delete(state);
+      const stateData = JSON.parse(stateDataStr);
+      const now = Date.now();
+
+      // 检查state是否在有效期内（Redis已设置过期，但双重验证更安全）
+      if (now - stateData.timestamp > 10 * 60 * 1000) {
+        console.warn('state参数已过期');
+        await this.redisClient.del(`wechat:state:${state}`);
+        return null;
+      }
+
+      // 验证通过后，从Redis中删除该state（防止重复使用）
+      await this.redisClient.del(`wechat:state:${state}`);
+
+      console.log(`state验证成功，dialogId: ${stateData.dialogId}`);
+      return { dialogId: stateData.dialogId };
+    } catch (error) {
+      console.error('验证state参数失败:', error);
       return null;
     }
-
-    // 验证通过后，从缓存中移除该state（防止重复使用）
-    this.stateCache.delete(state);
-
-    console.log(`state验证成功，dialogId: ${stateData.dialogId}`);
-    return { dialogId: stateData.dialogId };
   }
 
   /**
@@ -199,15 +227,10 @@ class WechatOAuth {
 
   /**
    * 清理过期的state参数
+   * @deprecated 已使用Redis的EXPIRE自动过期，此方法不再需要
    */
   cleanupExpiredStates() {
-    const now = Date.now();
-    for (const [state, data] of this.stateCache.entries()) {
-      // 清理超过10分钟的state
-      if (now - data.timestamp > 10 * 60 * 1000) {
-        this.stateCache.delete(state);
-      }
-    }
+    console.warn('cleanupExpiredStates方法已弃用，Redis将自动处理过期state');
   }
 }
 

@@ -7,7 +7,7 @@ import { questionCategories, questionsByCategory, getRandomQuestions } from '@/d
 
 export default function QAPage() {
   const navigate = useNavigate();
-  const { studentData, setStudentData } = useStudentData();
+  const { studentData } = useStudentData();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);

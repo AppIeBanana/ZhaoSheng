@@ -10,11 +10,11 @@ import querystring from 'querystring';
 class WechatOAuth {
   constructor(options = {}) {
     // 使用传入的配置或默认值
-    this.appId = options.appId || process.env.WECHAT_APPID || 'wx02174ad10f43c94b';
-    this.appSecret = options.appSecret || process.env.WECHAT_APPSECRET || '425dae343da2270162aa60bc05cc3a5d';
+    this.appId = options.appId || process.env.WECHAT_APPID;
+    this.appSecret = options.appSecret || process.env.WECHAT_APPSECRET;
     // 重定向URI应该指向服务器的回调端点，而不是前端页面
-    this.redirectUri = options.redirectUri || 'https://www.snq369.cn/api/wechat/callback';
-    this.scope = options.scope || 'snsapi_userinfo';
+    this.redirectUri = options.redirectUri || process.env.WECHAT_REDIRECT_URI;
+    this.scope = options.scope || process.env.WECHAT_SCOPE;
     
     // 用于存储state参数的缓存（生产环境应使用Redis等持久化存储）
     this.stateCache = new Map();

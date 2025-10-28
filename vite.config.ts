@@ -10,7 +10,7 @@ function getPlugins() {
   return plugins;
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: getPlugins(),
   // 添加 base 配置以支持在子路径 /projects/ZhaoSheng 下部署
   base: process.env.NODE_ENV === 'production' ? '/projects/ZhaoSheng/' : '/',
@@ -27,5 +27,7 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash].[ext]'
       }
     }
-  }
-});
+  },
+  // 环境变量前缀，Vite会将其注入到应用中
+  envPrefix: 'VITE_',
+}));

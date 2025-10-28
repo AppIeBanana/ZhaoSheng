@@ -26,6 +26,12 @@ pipeline {
     parameters {
         booleanParam(name: 'DEPLOY_TO_PROD', defaultValue: true, description: '是否部署到生产环境')
         choice(name: 'BRANCH', choices: ['main', 'develop'], description: '选择要构建的分支')
+        // Coze API 配置参数
+        string(name: 'VITE_COZE_AUTH_TOKEN', defaultValue: '', description: 'Coze API 认证令牌')
+        string(name: 'VITE_COZE_API_URL', defaultValue: 'https://api.coze.cn/v3/chat', description: 'Coze API 地址')
+        string(name: 'VITE_COZE_BOT_ID', defaultValue: '', description: 'Coze Bot ID')
+        string(name: 'VITE_COZE_WORKFLOW_ID', defaultValue: '', description: 'Coze Workflow ID')
+        string(name: 'VITE_WECHAT_TOKEN', defaultValue: '', description: '微信 Token')
     }
     
     stages {
@@ -142,10 +148,26 @@ pipeline {
                     '''
                     
                     echo "构建Docker镜像，版本号：${DOCKER_IMAGE_VERSION}，优先使用本地基础镜像..."
-                    // --pull=false 确保Docker不尝试拉取镜像，优先使用本地镜像
-                    // --network=host 使用主机网络配置
-                    // 同时标记latest和具体版本号
-                    sh "docker build --network=host --pull=false -t ${DOCKER_IMAGE_NAME}:latest -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} ."
+                    
+                    // 构建 Docker 镜像时传递环境变量参数
+                    // 使用 ?: 处理空字符串，确保 Docker 构建参数不为空
+                    def authToken = params.VITE_COZE_AUTH_TOKEN ?: ''
+                    def apiUrl = params.VITE_COZE_API_URL ?: 'https://api.coze.cn/v3/chat'
+                    def botId = params.VITE_COZE_BOT_ID ?: ''
+                    def workflowId = params.VITE_COZE_WORKFLOW_ID ?: ''
+                    def wechatToken = params.VITE_WECHAT_TOKEN ?: ''
+                    
+                    // 构建完整的 docker build 命令
+                    def buildCommand = "docker build --network=host --pull=false " +
+                       "--build-arg VITE_COZE_AUTH_TOKEN=${authToken} " +
+                       "--build-arg VITE_COZE_API_URL=${apiUrl} " +
+                       "--build-arg VITE_COZE_BOT_ID=${botId} " +
+                       "--build-arg VITE_COZE_WORKFLOW_ID=${workflowId} " +
+                       "--build-arg VITE_WECHAT_TOKEN=${wechatToken} " +
+                       "-t ${DOCKER_IMAGE_NAME}:latest -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} ."
+                    
+                    echo "执行构建命令: ${buildCommand}"
+                    sh buildCommand
                     
                     // 显示构建的镜像信息
                     echo "构建完成，镜像信息："

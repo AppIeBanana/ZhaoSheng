@@ -28,9 +28,26 @@ WECHAT_APPID=your_appid WECHAT_APPSECRET=your_appsecret WECHAT_TOKEN=your_token 
 
 您也可以创建 `.env` 文件来管理所有环境变量：
 
-1. 复制模板文件：`cp .env.example .env`
-2. 编辑 `.env` 文件，修改相应的配置值
-3. 启动服务时，系统会自动读取这些环境变量
+1. 创建 `.env` 文件（项目根目录）
+2. 添加以下环境变量：
+   ```bash
+   # 微信配置
+   VITE_WECHAT_TOKEN=your_custom_token
+
+   # Coze API 配置（前端使用）
+   VITE_COZE_AUTH_TOKEN=your_coze_auth_token
+   VITE_COZE_API_URL=https://api.coze.cn/v3/chat
+   VITE_COZE_BOT_ID=your_bot_id
+   VITE_COZE_WORKFLOW_ID=your_workflow_id
+
+   # 服务端环境变量（可选，用于服务器端）
+   WECHAT_TOKEN=your_custom_token
+   SSL_KEY_PATH=/path/to/ssl/private/key.pem
+   SSL_CERT_PATH=/path/to/ssl/fullchain.pem
+   ```
+3. 启动服务时，Vite 会自动读取 `VITE_` 前缀的环境变量
+
+**注意**: `.env` 文件已被添加到 `.gitignore`，不会被提交到版本控制系统
 
 ## 配置文件位置
 

@@ -1,11 +1,11 @@
+import { API_CONFIG } from './config';
+
 export interface Message {
   id: string;
   content: string;
   sender: 'user' | 'bot';
   timestamp: Date;
 }
-
-import { API_CONFIG } from './config';
 
 // Mock API call to simulate responses
 export async function* sendMessageToAPIStream(message: string, studentData: any, userId?: string): AsyncGenerator<string> {

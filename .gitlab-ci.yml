@@ -1,0 +1,186 @@
+# GitLab CI/CD Pipeline for 招生前端开发项目
+
+variables:
+  # Docker相关配置
+  DOCKER_IMAGE_NAME: 'zhaosheng-web'
+  DOCKER_CONTAINER_NAME: 'zhaosheng-web'
+  # 部署服务器配置
+  DEPLOY_SERVER: '10.26.1.82'
+  DEPLOY_PATH: '/projects/ZhaoSheng'
+  # 默认分支
+  DEFAULT_BRANCH: 'main'
+
+# 定义stages
+stages:
+  - checkout
+  - dependencies
+  - quality
+  - build
+  - docker
+  - deploy
+
+# 设置默认镜像
+default:
+  image:
+    name: node:24.10.0
+    entrypoint: ['']
+
+# 拉取代码
+checkout_code:
+  stage: checkout
+  script:
+    - echo "从 ${CI_REPOSITORY_URL} 拉取 ${CI_COMMIT_REF_NAME} 分支代码"
+    - echo "当前分支:${CI_COMMIT_REF_NAME}"
+    - echo "提交ID:${CI_COMMIT_SHA}"
+  tags:
+    - docker
+
+# 安装依赖
+install_dependencies:
+  stage: dependencies
+  script:
+    - echo '安装项目依赖...'
+    - node -v && npm -v
+    - npm install -g pnpm
+    - pnpm config set registry https://registry.npmmirror.com
+    - pnpm install
+    - npx update-browserslist-db@latest
+  artifacts:
+    paths:
+      - node_modules/
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}-node_modules"
+    paths:
+      - node_modules/
+  tags:
+    - docker
+
+# 代码质量检查
+code_quality:
+  stage: quality
+  script:
+    - echo '执行代码质量检查...'
+    - npx tsc --noEmit
+    # 启用测试（可选）
+    # - pnpm test
+  tags:
+    - docker
+
+# 构建项目
+build_project:
+  stage: build
+  script:
+    - echo '构建项目...'
+    - pnpm run build
+  artifacts:
+    paths:
+      - dist/
+  tags:
+    - docker
+
+# 构建Docker镜像
+build_docker_image:
+  stage: docker
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: ['']
+  script:
+    - echo "构建Docker镜像，版本号：${CI_COMMIT_SHORT_SHA}"
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"${CI_REGISTRY}\":{\"auth\":\"$(echo -n ${CI_REGISTRY_USER}:${CI_REGISTRY_PASSWORD} | base64)\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor \
+        --context ${CI_PROJECT_DIR} \
+        --dockerfile ${CI_PROJECT_DIR}/Dockerfile \
+        --destination ${DOCKER_IMAGE_NAME}:latest \
+        --destination ${DOCKER_IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}
+  tags:
+    - docker
+  only:
+    - main
+    - develop
+
+# 部署到服务器
+deploy_to_server:
+  stage: deploy
+  script:
+    - echo "部署到服务器 ${DEPLOY_SERVER}:${DEPLOY_PATH}"
+    # 使用SSH进行部署
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
+    
+    # 确保部署目录存在
+    - ssh ${SSH_USERNAME}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
+    
+    # 复制必要的配置文件
+    - echo '复制配置文件到服务器...'
+    - scp docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
+    - scp nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
+    
+    # 在部署服务器上执行部署命令
+    - ssh ${SSH_USERNAME}@${DEPLOY_SERVER} '
+        echo "开始部署应用...";
+        cd ${DEPLOY_PATH};
+
+        echo "停止并移除旧容器...";
+        docker-compose down || true;
+
+        echo "优先加载本地基础镜像文件...";
+        if [ -f "${DEPLOY_PATH}/node-lts-jod.tar" ]; then
+          echo "发现本地Node基础镜像文件，正在加载...";
+          docker load -i "${DEPLOY_PATH}/node-lts-jod.tar" || echo "Node基础镜像加载失败，将继续部署";
+          if docker images | grep -q "node:lts-jod" || docker images | grep -q "library/node:lts-jod"; then
+            echo "为Node镜像添加指定域名标签...";
+            docker tag node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || 
+            docker tag library/node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || 
+            echo "Node镜像标签设置失败，但将继续部署";
+          fi;
+        fi;
+
+        if [ -f "${DEPLOY_PATH}/nginx-stable-perl.tar" ]; then
+          echo "发现本地Nginx基础镜像文件，正在加载...";
+          docker load -i "${DEPLOY_PATH}/nginx-stable-perl.tar" || echo "Nginx基础镜像加载失败，将继续部署";
+          
+          if docker images | grep -q "nginx:stable-perl" || docker images | grep -q "library/nginx:stable-perl"; then
+            echo "为Nginx镜像添加指定域名标签...";
+            docker tag nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || 
+            docker tag library/nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || 
+            echo "Nginx镜像标签设置失败，但将继续部署";
+          fi;
+        fi;
+        
+        echo "拉取最新应用镜像...";
+        docker pull ${DOCKER_IMAGE_NAME}:latest;
+        
+        echo "启动新容器...";
+        docker-compose up -d;
+        
+        echo "等待容器启动...";
+        sleep 5;
+        
+        echo "检查容器状态...";
+        docker ps -f "name=${DOCKER_CONTAINER_NAME}";
+        
+        echo "清理旧镜像...";
+        docker system prune -f;
+        
+        echo "部署完成，容器状态：";
+        docker ps -f "name=${DOCKER_CONTAINER_NAME}" || echo "容器状态检查跳过";
+      '
+  environment:
+    name: production
+  tags:
+    - docker
+  only:
+    - main
+  when: manual
+
+# 后构建清理
+cleanup:
+  stage: .post
+  script:
+    - echo '执行清理操作...'
+  tags:
+    - docker
+  when: always

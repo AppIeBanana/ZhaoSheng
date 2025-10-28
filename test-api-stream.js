@@ -13,15 +13,11 @@ const mockStudentData = {
 const message = '学校的招生计划是多少？';
 const userId = 'test_user_id';
 
-// API配置 - 可以直接从配置文件导入，或者保持硬编码用于独立测试
-// 如果需要导入配置文件，请确保路径正确
+// API配置
 const apiUrl = 'https://api.coze.cn/v3/chat';
 const authToken = 'sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU';
 const botId = '7553550342269550632';
 const workflowId = '7553548989958930470';
-
-// 注意：在实际应用中，这些配置应该从配置文件中导入
-// 例如: const { API_CONFIG } = require('./src/lib/config');
 
 // 准备请求数据
 const requestData = {

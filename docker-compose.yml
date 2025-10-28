@@ -1,38 +1,22 @@
 services:
-  zhaosheng-web:
-    image: zhaosheng-web:latest
-    container_name: zhaosheng-web
+  web:
     build: .
     ports:
       - "82:82"
       - "443:443"
-    restart: unless-stopped
+    restart: always
     volumes:
       # 挂载 Let's Encrypt 证书目录
       - /etc/letsencrypt:/etc/letsencrypt:ro
       # 挂载 Certbot 续期目录
       - /var/www/certbot:/var/www/certbot
-      # 挂载配置文件
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
-      # 挂载日志目录以便查看
-      - ./logs:/var/log/nginx
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./ssl:/etc/nginx/ssl
     environment:
       - NODE_ENV=production
-      - SERVER_PORT=82
-      - HTTPS_PORT=443
     networks:
       - app-network
-    # 健康检查
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:82"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
 networks:
   app-network:
     driver: bridge
-    ipam:
-      driver: default

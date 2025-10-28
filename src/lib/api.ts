@@ -1,5 +1,3 @@
-import { API_CONFIG } from './config';
-
 export interface Message {
   id: string;
   content: string;
@@ -10,16 +8,16 @@ export interface Message {
 // Mock API call to simulate responses
 export async function* sendMessageToAPIStream(message: string, studentData: any, userId?: string): AsyncGenerator<string> {
   // Coze API endpoint - updated to v3/chat as per requirements
-  const apiUrl = API_CONFIG.API_URL;
+  const apiUrl = 'https://api.coze.cn/v3/chat';
   
-  // API authorization token from config
-  const authToken = API_CONFIG.AUTH_TOKEN;
+  // API authorization token (provided by user)
+  const authToken = 'sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU'; // 用户提供的实际token
   
   try {
     // Prepare request data based on the new API format provided
     const requestData = {
-      bot_id: API_CONFIG.BOT_ID,
-      workflow_id: API_CONFIG.WORKFLOW_ID,
+      bot_id: "7553550342269550632",
+      workflow_id: "7553548989958930470",
       // 如果提供了userId则使用，否则生成一个临时ID
       user_id: userId || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       stream: true,

@@ -10,7 +10,7 @@ import { ethnicities } from '@/data/ethnicities.ts';
 export default function InfoCollection() {
   const navigate = useNavigate();
   const { setStudentData } = useStudentData();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // const { isAuthenticated } = useWechatAuthContext();
 
@@ -23,9 +23,8 @@ export default function InfoCollection() {
     score: ""
   });
   
-  // 已注释：对话ID输入相关状态（调试模式使用）
-  // const [dialogIdInput, setDialogIdInput] = useState('');
-  // const [showManualIdInput, setShowManualIdInput] = useState(false);
+  const [dialogIdInput, setDialogIdInput] = useState('');
+  const [showManualIdInput, setShowManualIdInput] = useState(false);
   
   // 检查URL中是否有ID或本地存储中是否有保存的ID
   useEffect(() => {
@@ -60,21 +59,21 @@ export default function InfoCollection() {
     }
   }, [navigate, setStudentData, searchParams]);
   
-  // 已注释：应用手动输入的对话ID（调试模式使用）
-  // const applyManualDialogId = () => {
-  //   if (dialogIdInput.trim()) {
-  //     // 检查是否有与该ID关联的学生数据
-  //     const savedStudentData = localStorage.getItem(`student_data_${dialogIdInput.trim()}`);
-  //     if (savedStudentData) {
-  //       try {
-  //         setStudentData(JSON.parse(savedStudentData));
-  //       } catch (error) {
-  //         console.error('Failed to parse saved student data:', error);
-  //       }
-  //     }
-  //     navigate({ pathname: '/qa', search: `dialogId=${dialogIdInput.trim()}` });
-  //   }
-  // };
+  // 应用手动输入的对话ID
+  const applyManualDialogId = () => {
+    if (dialogIdInput.trim()) {
+      // 检查是否有与该ID关联的学生数据
+      const savedStudentData = localStorage.getItem(`student_data_${dialogIdInput.trim()}`);
+      if (savedStudentData) {
+        try {
+          setStudentData(JSON.parse(savedStudentData));
+        } catch (error) {
+          console.error('Failed to parse saved student data:', error);
+        }
+      }
+      navigate({ pathname: '/qa', search: `dialogId=${dialogIdInput.trim()}` });
+    }
+  };
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -205,7 +204,7 @@ export default function InfoCollection() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-8 max-w-[475px] mx-auto">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-8">
       {/* Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -215,8 +214,8 @@ export default function InfoCollection() {
         <p className="text-gray-600">请填写以下信息，以便为您提供个性化咨询</p>
       </div>
       
-      {/* 调试模式：手动输入对话ID区域 - 已注释 */}
-      {/* <div className="mb-6">
+      {/* 调试模式：手动输入对话ID区域 */}
+      <div className="mb-6">
         <button
           onClick={() => setShowManualIdInput(!showManualIdInput)}
           className="w-full py-2 px-4 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors"
@@ -245,7 +244,7 @@ export default function InfoCollection() {
             <p className="text-xs text-yellow-700 mt-2">调试模式：输入已有的对话ID可加载历史记录</p>
           </div>
         )}
-      </div> */}
+      </div>
       
       {/* Form Card */}
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 transform transition-all duration-300 hover:shadow-xl">

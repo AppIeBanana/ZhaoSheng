@@ -10,7 +10,7 @@ import { ethnicities } from '@/data/ethnicities.ts';
 export default function InfoCollection() {
   const navigate = useNavigate();
   const { setStudentData } = useStudentData();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // const { isAuthenticated } = useWechatAuthContext();
 

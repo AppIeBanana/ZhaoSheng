@@ -178,7 +178,7 @@ if (credentials) {
     res.writeHead = function(statusCode, headers) {
         // 添加Content Security Policy头允许访问Coze API
         headers = headers || {};
-        headers['Content-Security-Policy'] = "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self' https://api.coze.cn https://cdnjs.cloudflare.com;";
+        headers['Content-Security-Policy'] = "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self' https://api.coze.cn https://cdnjs.cloudflare.com;";
       const processingTime = Date.now() - startTime;
       console.log(`=== 响应信息 ===`);
       console.log(`状态码: ${statusCode}`);
@@ -236,7 +236,7 @@ if (credentials) {
       console.log(`路径 ${pathname} 不存在，返回404`);
       res.writeHead(404, { 
    'Content-Type': 'text/plain',
-   'Content-Security-Policy': "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self' https://api.coze.cn https://cdnjs.cloudflare.com;"
+   'Content-Security-Policy': "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src-elem 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self' https://api.coze.cn https://cdnjs.cloudflare.com;"
  });
       res.end('Not Found');
     }

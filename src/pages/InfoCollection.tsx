@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStudentData } from '@/contexts/studentContext.tsx';
 // import { useWechatAuthContext } from '@/contexts/wechatAuthContext.tsx';
 import { toast } from 'sonner';

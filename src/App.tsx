@@ -1,5 +1,4 @@
-import React from 'react';
-import { createBrowserRouter, RouterProvider, Route } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import InfoCollection from '@/pages/InfoCollection';
 import QAPage from '@/pages/QAPage';
 import { StudentProvider } from '@/contexts/studentContext.tsx';

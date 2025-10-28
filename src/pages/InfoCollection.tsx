@@ -9,7 +9,10 @@ import { ethnicities } from '@/data/ethnicities.ts';
 export default function InfoCollection() {
   const navigate = useNavigate();
   const { setStudentData } = useStudentData();
+  const [searchParams] = useSearchParams();
+
   // const { isAuthenticated } = useWechatAuthContext();
+
   
   const [formData, setFormData] = useState({
     examType: "",
@@ -18,6 +21,58 @@ export default function InfoCollection() {
     ethnicity: "",
     score: ""
   });
+  
+  const [dialogIdInput, setDialogIdInput] = useState('');
+  const [showManualIdInput, setShowManualIdInput] = useState(false);
+  
+  // 检查URL中是否有ID或本地存储中是否有保存的ID
+  useEffect(() => {
+    // 检查URL参数
+    const urlDialogId = searchParams.get('dialogId');
+    if (urlDialogId) {
+      // 从本地存储中获取与该ID关联的学生数据
+      const savedStudentData = localStorage.getItem(`student_data_${urlDialogId}`);
+      if (savedStudentData) {
+        try {
+          setStudentData(JSON.parse(savedStudentData));
+        } catch (error) {
+          console.error('Failed to parse saved student data:', error);
+        }
+      }
+      navigate('/qa');
+      return;
+    }
+    
+    // 检查是否有自动获取的ID（例如从微信授权）
+    const autoDetectedId = localStorage.getItem('auto_detected_id');
+    if (autoDetectedId) {
+      const savedStudentData = localStorage.getItem(`student_data_${autoDetectedId}`);
+      if (savedStudentData) {
+        try {
+          setStudentData(JSON.parse(savedStudentData));
+        } catch (error) {
+          console.error('Failed to parse saved student data:', error);
+        }
+      }
+      navigate({ pathname: '/qa', search: `dialogId=${autoDetectedId}` });
+    }
+  }, [navigate, setStudentData, searchParams]);
+  
+  // 应用手动输入的对话ID
+  const applyManualDialogId = () => {
+    if (dialogIdInput.trim()) {
+      // 检查是否有与该ID关联的学生数据
+      const savedStudentData = localStorage.getItem(`student_data_${dialogIdInput.trim()}`);
+      if (savedStudentData) {
+        try {
+          setStudentData(JSON.parse(savedStudentData));
+        } catch (error) {
+          console.error('Failed to parse saved student data:', error);
+        }
+      }
+      navigate({ pathname: '/qa', search: `dialogId=${dialogIdInput.trim()}` });
+    }
+  };
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -129,11 +184,16 @@ export default function InfoCollection() {
       // Save form data to context
       setStudentData(formData);
       
-      // Save form data to local storage for future visits
-      localStorage.setItem('studentData', JSON.stringify(formData));
+
+      // 生成新的对话ID
+      const newDialogId = `dialog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Navigate to Q&A page
-      navigate('/qa');
+      // 将学生类型与ID关联保存到本地存储
+      localStorage.setItem(`student_data_${newDialogId}`, JSON.stringify(formData));
+      
+      // Navigate to Q&A page with the new dialog ID
+      navigate({ pathname: '/qa', search: `dialogId=${newDialogId}` });
+
     } catch (error) {
       toast.error("提交失败，请重试");
       console.error("Form submission error:", error);
@@ -143,7 +203,7 @@ export default function InfoCollection() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-4 md:py-8">
       {/* Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -153,8 +213,40 @@ export default function InfoCollection() {
         <p className="text-gray-600">请填写以下信息，以便为您提供个性化咨询</p>
       </div>
       
+      {/* 调试模式：手动输入对话ID区域 */}
+      <div className="mb-6">
+        <button
+          onClick={() => setShowManualIdInput(!showManualIdInput)}
+          className="w-full py-2 px-4 bg-yellow-100 text-yellow-800 rounded-lg text-sm font-medium hover:bg-yellow-200 transition-colors"
+        >
+          {showManualIdInput ? "隐藏对话ID输入" : "调试模式：手动输入对话ID"}
+        </button>
+        
+        {showManualIdInput && (
+          <div className="mt-3 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+            <div className="flex space-x-2 items-center">
+              <input
+                type="text"
+                placeholder="输入对话ID以加载历史记录"
+                value={dialogIdInput}
+                onChange={(e) => setDialogIdInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && applyManualDialogId()}
+                className="flex-1 px-3 py-2 border border-yellow-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              />
+              <button
+                onClick={applyManualDialogId}
+                className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
+              >
+                进入咨询
+              </button>
+            </div>
+            <p className="text-xs text-yellow-700 mt-2">调试模式：输入已有的对话ID可加载历史记录</p>
+          </div>
+        )}
+      </div>
+      
       {/* Form Card */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 transform transition-all duration-300 hover:shadow-xl">
+      <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 md:p-8 mb-8 transform transition-all duration-300 hover:shadow-xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Exam Type */}
           <div className="space-y-2">

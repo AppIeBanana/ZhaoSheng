@@ -6,7 +6,7 @@ export interface Message {
 }
 
 // Mock API call to simulate responses
-export async function* sendMessageToAPIStream(message: string, studentData: any): AsyncGenerator<string> {
+export async function* sendMessageToAPIStream(message: string, studentData: any, userId?: string): AsyncGenerator<string> {
   // Coze API endpoint - updated to v3/chat as per requirements
   const apiUrl = 'https://api.coze.cn/v3/chat';
   
@@ -18,7 +18,8 @@ export async function* sendMessageToAPIStream(message: string, studentData: any)
     const requestData = {
       bot_id: "7553550342269550632",
       workflow_id: "7553548989958930470",
-      user_id: "123456789",
+      // 如果提供了userId则使用，否则生成一个临时ID
+      user_id: userId || `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       stream: true,
       additional_messages: [
         {

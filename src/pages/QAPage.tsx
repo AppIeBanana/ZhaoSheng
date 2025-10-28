@@ -324,7 +324,7 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
       
       {/* 对话ID输入区域 - 调试模式使用 */}
       {!currentDialogId && (
-        <div className="bg-yellow-50 border-b border-yellow-100 p-3">
+        <div className="bg-yellow-50 border-b border-yellow-100 p-3 px-4">
           <div className="flex space-x-2 items-center">
             <input
               type="text"
@@ -407,7 +407,7 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
         {/* Messages Container - Now part of the main scrollable content */}
         <div className="p-4 space-y-6">
           {/* Messages */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Historical records separator */}
             {messages.length > 1 && (
               <div className="flex items-center justify-center my-4">
@@ -426,7 +426,7 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
                     className="w-10 h-10 rounded-full mr-2 object-cover flex-shrink-0"
                   />
                 )}
-                <div className={`max-w-[80%] ${message.sender === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
+                <div className={`max-w-[85%] sm:max-w-[80%] ${message.sender === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
                   <div className={`
                     rounded-2xl p-4 shadow-sm relative
                     ${message.sender === 'user' 
@@ -482,7 +482,7 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
       </div>
       
        {/* Input Area - Fixed at bottom */}
-      <div className="bg-white p-3 border-t fixed bottom-0 left-0 right-0 z-10 max-w-full">
+      <div className="bg-white p-3 px-4 border-t fixed bottom-0 left-0 right-0 z-10 max-w-full shadow-md">
         <div className="relative">
            <input
             type="text"
@@ -497,7 +497,7 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-3">
              {/* 文件上传按钮 */}
              <button 
-               className="text-gray-400 hover:text-blue-600 transition-colors"
+               className="text-gray-600 hover:text-blue-600 transition-colors"
                disabled={isLoading}
                onClick={() => document.getElementById('file-upload')?.click()}
              >
@@ -521,7 +521,7 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
              
              {/* 语音输入按钮 */}
              <button 
-               className="text-gray-400 hover:text-blue-600 transition-colors"
+               className="text-gray-600 hover:text-blue-600 transition-colors"
                disabled={isLoading}
              >
                <i className="fa-solid fa-microphone"></i>
@@ -529,7 +529,7 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
              
              {/* 发送按钮 */}
              <button 
-               className="text-gray-400 hover:text-blue-600 transition-colors"
+               className="text-gray-600 hover:text-blue-600 transition-colors"
                disabled={isLoading || !input.trim()}
                onClick={handleSendMessage}
              >

@@ -176,6 +176,9 @@ if (credentials) {
     // 重写res.writeHead方法以记录响应状态码
     const originalWriteHead = res.writeHead;
     res.writeHead = function(statusCode, headers) {
+        // 添加Content Security Policy头允许访问Coze API
+        headers = headers || {};
+        headers['Content-Security-Policy'] = "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.coze.cn";
       const processingTime = Date.now() - startTime;
       console.log(`=== 响应信息 ===`);
       console.log(`状态码: ${statusCode}`);
@@ -231,7 +234,10 @@ if (credentials) {
     } else {
       // 简单的静态文件服务和404处理
       console.log(`路径 ${pathname} 不存在，返回404`);
-      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      res.writeHead(404, { 
+   'Content-Type': 'text/plain',
+   'Content-Security-Policy': "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://api.coze.cn"
+ });
       res.end('Not Found');
     }
   });

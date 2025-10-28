@@ -204,7 +204,7 @@ export default function InfoCollection() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-4 md:py-8">
       {/* Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -247,7 +247,7 @@ export default function InfoCollection() {
       </div>
       
       {/* Form Card */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 transform transition-all duration-300 hover:shadow-xl">
+      <div className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 md:p-8 mb-8 transform transition-all duration-300 hover:shadow-xl">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Exam Type */}
           <div className="space-y-2">

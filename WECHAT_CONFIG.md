@@ -4,50 +4,11 @@
 
 ## 配置信息
 
-### 配置说明
+### 已配置的Token
 
-### Token配置
+**Token**: `zhaosheng2024`
 
-**默认Token**: `zhaosheng2024`
-
-> **注意**: 这是一个3-32位的英文数字组合，符合微信公众平台的要求。
-
-### 使用环境变量配置
-
-为了提高安全性，现在推荐通过环境变量配置敏感信息：
-
-```bash
-# 设置Token环境变量
-WECHAT_TOKEN=your_custom_token node server.js
-
-# 或者设置多个环境变量
-WECHAT_APPID=your_appid WECHAT_APPSECRET=your_appsecret WECHAT_TOKEN=your_token node server.js
-```
-
-### 环境变量文件配置
-
-您也可以创建 `.env` 文件来管理所有环境变量：
-
-1. 创建 `.env` 文件（项目根目录）
-2. 添加以下环境变量：
-   ```bash
-   # 微信配置
-   VITE_WECHAT_TOKEN=your_custom_token
-
-   # Coze API 配置（前端使用）
-   VITE_COZE_AUTH_TOKEN=your_coze_auth_token
-   VITE_COZE_API_URL=https://api.coze.cn/v3/chat
-   VITE_COZE_BOT_ID=your_bot_id
-   VITE_COZE_WORKFLOW_ID=your_workflow_id
-
-   # 服务端环境变量（可选，用于服务器端）
-   WECHAT_TOKEN=your_custom_token
-   SSL_KEY_PATH=/path/to/ssl/private/key.pem
-   SSL_CERT_PATH=/path/to/ssl/fullchain.pem
-   ```
-3. 启动服务时，Vite 会自动读取 `VITE_` 前缀的环境变量
-
-**注意**: `.env` 文件已被添加到 `.gitignore`，不会被提交到版本控制系统
+> **注意**: 这是一个3-32位的英文数字组合，符合微信公众平台的要求。如果需要修改，请在 `src/lib/config.ts` 文件中更新。
 
 ## 配置文件位置
 
@@ -86,19 +47,20 @@ WECHAT_APPID=your_appid WECHAT_APPSECRET=your_appsecret WECHAT_TOKEN=your_token 
 
 3. 服务将在 80 端口启动，这是微信服务器验证的默认端口
 
-### 配置文件位置更新
+### 使用环境变量配置Token（可选）
 
-- **配置文件**: `src/lib/config.ts`（已更新为从环境变量读取配置）
-- **验证工具**: `src/lib/wechatVerify.ts`
-- **后端服务**: `server.js`（已更新为从环境变量读取配置）
+您可以通过环境变量覆盖默认的Token：
+
+```bash
+WECHAT_TOKEN=your_custom_token node server.js
+```
 
 ## 注意事项
 
-1. 确保服务器防火墙已开放80/443端口
+1. 确保服务器防火墙已开放80端口
 2. 如果使用HTTPS，请配置相应的SSL证书并使用443端口
-3. **重要安全措施**: Token等敏感信息已移至环境变量管理，请避免在代码中硬编码
+3. Token必须保密，不要在前端代码中暴露
 4. 定期更新Token以提高安全性
-5. 确保 `.env` 文件不被提交到版本控制系统（已在 `.gitignore` 中配置）
 
 ## 开发说明
 

@@ -40,38 +40,38 @@ export default function QAPage() {
   );
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [lastUpdatedMessageId, setLastUpdatedMessageId] = useState<string | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [dialogIdInput, setDialogIdInput] = useState('');
+  const [searchParams] = useSearchParams();
+  // const [dialogIdInput, setDialogIdInput] = useState('');
   
   // 获取当前对话ID（从URL参数中）
   const currentDialogId = searchParams.get('dialogId');
   
   // 设置对话ID到URL
-  const setDialogId = (dialogId: string) => {
-    if (dialogId) {
-      setSearchParams({ dialogId });
-    } else {
-      // 如果没有对话ID，则移除该参数
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete('dialogId');
-      setSearchParams(newParams);
-    }
-  };
+  // const setDialogId = (dialogId: string) => {
+  //   if (dialogId) {
+  //     setSearchParams({ dialogId });
+  //   } else {
+  //     // 如果没有对话ID，则移除该参数
+  //     const newParams = new URLSearchParams(searchParams);
+  //     newParams.delete('dialogId');
+  //     setSearchParams(newParams);
+  //   }
+  // };
   
   // 应用对话ID
-  const applyDialogId = () => {
-    if (dialogIdInput.trim()) {
-      setDialogId(dialogIdInput.trim());
-      setDialogIdInput('');
-      toast.success(`已切换到对话ID: ${dialogIdInput.trim()}`);
-    }
-  };
+  // const applyDialogId = () => {
+  //   if (dialogIdInput.trim()) {
+  //     setDialogId(dialogIdInput.trim());
+  //     setDialogIdInput('');
+  //     toast.success(`已切换到对话ID: ${dialogIdInput.trim()}`);
+  //   }
+  // };
   
   // 生成新的随机对话ID
-  const generateNewDialogId = () => {
-    const newDialogId = `dialog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    setDialogIdInput(newDialogId);
-  };
+  // const generateNewDialogId = () => {
+  //   const newDialogId = `dialog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  //   setDialogIdInput(newDialogId);
+  // };
 
   // 修改为基于对话ID的用户标识管理逻辑
   const getUserIdentifier = () => {
@@ -314,16 +314,16 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
               <i className="fa-solid fa-bars ml-3 text-gray-400"></i>
             </div>
           </div>
-          {currentDialogId && (
+          {/* {currentDialogId && (
             <div className="bg-blue-50 px-2 py-1 rounded text-xs text-blue-600 border border-blue-100">
               ID: {currentDialogId}
             </div>
-          )}
+          )} */}
         </div>
       </header>
       
-      {/* 对话ID输入区域 - 调试模式使用 */}
-      {!currentDialogId && (
+      {/* 对话ID输入区域 - 调试模式使用 - 已注释 */}
+      {/* {!currentDialogId && (
         <div className="bg-yellow-50 border-b border-yellow-100 p-3 px-4">
           <div className="flex space-x-2 items-center">
             <input
@@ -349,7 +349,7 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
           </div>
           <p className="text-xs text-yellow-700 mt-1">调试模式：输入对话ID可加载历史记录，该ID将显示在URL中</p>
         </div>
-      )}
+      )} */}
       
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto pb-32">

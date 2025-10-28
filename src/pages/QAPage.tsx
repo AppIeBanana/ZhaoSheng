@@ -273,9 +273,9 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
 
   
   return (
-    <div className="flex flex-col h-screen bg-blue-50 max-w-md mx-auto">
+    <div className="flex flex-col h-screen bg-blue-50 max-w-md mx-auto relative">
       {/* Header with school branding */}
-      <header className="bg-white shadow-sm py-2.5 px-3 border-b sticky top-0 z-10">
+      <header className="bg-white shadow-sm py-2.5 px-3 border-b sticky top-0 z-30 w-full">
         <div className="flex items-center justify-between">
           <button 
             onClick={() => navigate('/')}
@@ -461,7 +461,7 @@ const loadMessagesFromLocalStorage = (userId: string): Message[] => {
       </div>
       
        {/* Input Area - Fixed at bottom */}
-      <div className="bg-white p-2.5 border-t fixed bottom-0 left-1/2 right-0 transform -translate-x-1/2 z-10 max-w-md w-full">
+      <div className="bg-white p-2.5 border-t fixed bottom-0 left-1/2 right-0 transform -translate-x-1/2 z-20 max-w-md w-full">
         <div className="relative">
            <input
             type="text"

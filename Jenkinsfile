@@ -95,7 +95,7 @@ pipeline {
             steps {
                 script {
                     echo '构建项目...'
-            withCredentials([file(credentialsId: 'env-file', variable: 'ENV_FILE')]) {
+            withCredentials([file(credentialsId: 'zhaosheng-env-file', variable: 'ENV_FILE')]) {
                 sh 'cp $ENV_FILE .env'
             }
             sh 'pnpm run build'

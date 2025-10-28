@@ -32,3 +32,6 @@ plk741023.pub
 .env
 .env.local
 .env.*.local
+
+# WeChat user data (contains sensitive information)
+wechat_users.json

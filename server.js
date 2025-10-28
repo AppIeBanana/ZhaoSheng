@@ -15,6 +15,47 @@ let WechatOAuth;
 // 从443端口更改为8443端口，避免与现有服务冲突并使用非特权端口
 const port = 8443;
 
+// 用户数据存储路径
+const USER_DATA_FILE = path.join(process.cwd(), 'wechat_users.json');
+
+// 保存用户信息到文件
+function saveUserData(dialogId, openid, unionid, userInfo) {
+  let users = {};
+  
+  // 读取现有数据
+  if (fs.existsSync(USER_DATA_FILE)) {
+    try {
+      const data = fs.readFileSync(USER_DATA_FILE, 'utf8');
+      users = JSON.parse(data);
+    } catch (error) {
+      console.error('读取用户数据文件失败:', error);
+    }
+  }
+  
+  // 添加或更新用户数据
+  users[dialogId] = {
+    openid,
+    unionid,
+    nickname: userInfo.nickname || '',
+    headimgurl: userInfo.headimgurl || '',
+    createdAt: new Date().toISOString(),
+    lastUpdatedAt: new Date().toISOString()
+  };
+  
+  // 如果已存在该openid，更新其信息
+  if (!users[dialogId].firstAuthAt) {
+    users[dialogId].firstAuthAt = new Date().toISOString();
+  }
+  
+  // 写入文件
+  try {
+    fs.writeFileSync(USER_DATA_FILE, JSON.stringify(users, null, 2), 'utf8');
+    console.log(`用户数据已保存: dialogId=${dialogId}, openid=${openid}, unionid=${unionid}`);
+  } catch (error) {
+    console.error('保存用户数据失败:', error);
+  }
+}
+
 // SSL证书配置 - 从环境变量读取证书路径
 const privateKeyPath = process.env.SSL_KEY_PATH; // 私钥路径
 const certificatePath = process.env.SSL_CERT_PATH; // 证书路径
@@ -166,15 +207,29 @@ if (credentials) {
 
           // 获取access_token
           const tokenInfo = await wechatOAuth.getAccessToken(code);
+          console.log('微信返回的token信息:', {
+            openid: tokenInfo.openid,
+            unionid: tokenInfo.unionid,
+            access_token: tokenInfo.access_token ? '已获取' : '未获取',
+            expires_in: tokenInfo.expires_in
+          });
 
           // 获取用户信息
           const userInfo = await wechatOAuth.getUserInfo(tokenInfo.access_token, tokenInfo.openid);
+          console.log('微信返回的用户信息:', {
+            openid: userInfo.openid,
+            nickname: userInfo.nickname,
+            unionid: userInfo.unionid
+          });
 
-          // 这里可以保存用户信息到数据库
-          console.log(`用户授权成功，openId: ${userInfo.openid}, dialogId: ${dialogId}`);
+          // 保存用户信息（优先使用userInfo中的unionid，如果没有则使用tokenInfo中的）
+          const openid = tokenInfo.openid || userInfo.openid;
+          const unionid = userInfo.unionid || tokenInfo.unionid;
+          
+          saveUserData(dialogId, openid, unionid, userInfo);
 
           // 生成授权成功后的重定向URL，带上必要的参数，跳转到QA页面
-          const frontendRedirectUrl = `https://zswd.fzrjxy.com/snqh5/qa?auto_detected_id=${dialogId}&wechat_authorized=true`;
+          const frontendRedirectUrl = `https://zswd.fzrjxy.com/qa?dialogId=${dialogId}&wechat_authorized=true&openid=${encodeURIComponent(openid)}`;
 
           // 重定向到前端页面
           res.writeHead(302, { 'Location': frontendRedirectUrl });
@@ -189,6 +244,50 @@ if (credentials) {
 
       // 立即执行异步回调处理
       handleOAuthCallback();
+      return;
+    }
+    
+    else if (pathname === '/api/wechat/user-info' && method === 'GET') {
+      // 获取用户信息的API端点
+      const dialogId = parsedUrl.searchParams.get('dialogId');
+      
+      if (!dialogId) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '缺少dialogId参数' }));
+        return;
+      }
+      
+      // 读取用户数据
+      let users = {};
+      if (fs.existsSync(USER_DATA_FILE)) {
+        try {
+          const data = fs.readFileSync(USER_DATA_FILE, 'utf8');
+          users = JSON.parse(data);
+        } catch (error) {
+          console.error('读取用户数据文件失败:', error);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: '读取用户数据失败' }));
+          return;
+        }
+      }
+      
+      // 查找用户
+      const userData = users[dialogId];
+      if (!userData) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未找到用户数据' }));
+        return;
+      }
+      
+      // 返回用户数据
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        openid: userData.openid,
+        unionid: userData.unionid,
+        nickname: userData.nickname,
+        headimgurl: userData.headimgurl,
+        createdAt: userData.createdAt
+      }));
       return;
     }
 

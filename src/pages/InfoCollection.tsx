@@ -51,9 +51,14 @@ export default function InfoCollection() {
       return;
     }
     
-    // 检查URL参数中的dialogId
+    // 检查URL参数中的dialogId（从微信授权回调返回）
     const urlDialogId = searchParams.get('dialogId');
-    if (urlDialogId) {
+    const wechatAuthorized = searchParams.get('wechat_authorized');
+    
+    if (urlDialogId && wechatAuthorized === 'true') {
+      // 保存dialogId到localStorage
+      localStorage.setItem('current_dialog_id', urlDialogId);
+      
       // 从本地存储中获取与该ID关联的学生数据
       const savedStudentData = localStorage.getItem(`student_data_${urlDialogId}`);
       if (savedStudentData) {
@@ -63,7 +68,9 @@ export default function InfoCollection() {
           console.error('Failed to parse saved student data:', error);
         }
       }
-      navigate('/qa');
+      
+      // 跳转到QA页面，并带上dialogId参数
+      navigate(`/qa?dialogId=${urlDialogId}&wechat_authorized=true`);
       return;
     }
     
@@ -211,13 +218,54 @@ export default function InfoCollection() {
       // 生成新的对话ID（前端生成）
       const dialogId = `dialog_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // 重定向到QA页面，使用对话ID
-      navigate(`/qa?dialogId=${dialogId}`);
+      // 将学生数据保存到本地存储，与dialogId关联
+      localStorage.setItem(`student_data_${dialogId}`, JSON.stringify(formData));
+      
+      // 请求后端获取微信授权URL
+      console.log('正在获取微信授权URL...');
+      console.log('对话ID:', dialogId);
+      
+      const response = await fetch(`https://zswd.fzrjxy.com:8443/api/wechat/auth-url?dialogId=${dialogId}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `获取授权URL失败: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.authUrl) {
+        throw new Error('授权URL为空');
+      }
+      
+      console.log('成功获取微信授权URL，即将跳转到微信授权页面...');
+      console.log('授权URL:', data.authUrl);
+      
+      // 给用户一点时间看到"处理中"状态
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // 跳转到微信授权页面（微信授权完成后会回调到后端，后端再重定向回QA页面）
+      window.location.href = data.authUrl;
 
     } catch (error) {
-      toast.error("提交失败，请重试");
-      console.error("Form submission error:", error);
-    } finally {
+      console.error("微信授权错误:", error);
+      
+      // 根据错误类型显示不同的提示
+      const errorMessage = error instanceof Error ? error.message : "获取微信授权失败";
+      
+      if (errorMessage.includes('503')) {
+        toast.error("微信授权服务暂时不可用，请稍后重试");
+      } else if (errorMessage.includes('网络')) {
+        toast.error("网络连接失败，请检查网络后重试");
+      } else {
+        toast.error(errorMessage);
+      }
+      
       setIsSubmitting(false);
     }
   };

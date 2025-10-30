@@ -32,7 +32,7 @@ export async function* sendMessageToAPIStream(message: string, studentData: any)
         // CONVERSATION_NAME: "talk",
         // USER_INPUT: message,
         exam_type: studentData.examType ,
-        minzu: studentData.ethnicity,
+        minzu: studentData.minzu,
         province: studentData.province,
         score: studentData.score,
         student_type: studentData.studentType

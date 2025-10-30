@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev:client": "vite --host --port 3303",
+    "dev:backend": "cd backend && node server.js",
     "dev": "pnpm dev:client",
     "build:client": "vite build --outDir dist/static",
-    "build": "rm -rf dist && pnpm build:client && cp package.json dist && touch dist/build.flag"
+    "build": "rm -rf dist && pnpm build:client && cp package.json dist && touch dist/build.flag",
+    "install:all": "pnpm install && cd backend && pnpm install"
   },
   "dependencies": {
     "clsx": "^2.1.1",

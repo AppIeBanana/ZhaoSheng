@@ -1,13 +1,12 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useStudentData } from '@/contexts/studentContext.tsx';
 // import { useWechatAuthContext } from '@/contexts/wechatAuthContext.tsx';
 import { toast } from 'sonner';
 import { provinces } from '@/data/provinces.ts';
 import { ethnicities } from '@/data/ethnicities.ts';
+import { saveStudentDataToRedis, getStudentDataFromRedis } from '@/lib/redis.ts';
 
 export default function InfoCollection() {
-  const navigate = useNavigate();
   const { setStudentData } = useStudentData();
   // const { isAuthenticated } = useWechatAuthContext();
   
@@ -15,34 +14,43 @@ export default function InfoCollection() {
     examType: "",
     studentType: "",
     province: "",
-    ethnicity: "",
-    score: ""
+    minzu: "",
+    score: "",
+    phone: ""
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   // 添加搜索关键词状态
   const [provinceSearchTerm, setProvinceSearchTerm] = useState("");
-  const [ethnicitySearchTerm, setEthnicitySearchTerm] = useState("");
+  const [minzuSearchTerm, setMinzuSearchTerm] = useState("");
   // 下拉框展开状态
   const [isProvinceDropdownOpen, setIsProvinceDropdownOpen] = useState(false);
-  const [isEthnicityDropdownOpen, setIsEthnicityDropdownOpen] = useState(false);
+  const [isMinzuDropdownOpen, setIsMinzuDropdownOpen] = useState(false);
   
-  // 检查是否已有学生信息，如果有则直接跳转到问答页面
-  // useEffect(() => {
-  //   if (isAuthenticated) {
-  //     const savedStudentData = localStorage.getItem('studentData');
-  //     if (savedStudentData) {
-  //       try {
-  //         const parsedData = JSON.parse(savedStudentData);
-  //         setStudentData(parsedData);
-  //         navigate('/qa');
-  //       } catch (error) {
-  //         console.error('加载保存的学生信息失败:', error);
-  //       }
-  //     }
-  //   }
-  // }, [isAuthenticated, navigate, setStudentData]);
+  // 检查是否已有学生信息，但不再自动跳转
+  useEffect(() => {
+    const checkExistingStudentData = async () => {
+      try {
+        // 从本地存储获取数据（我们已经优化了redis.ts，会优先返回localStorage数据）
+        const studentData = await getStudentDataFromRedis();
+        
+        if (studentData) {
+          // 如果成功获取到数据，设置到context中
+          // 但不自动跳转，让用户通过点击按钮来决定是否继续
+          setStudentData(studentData);
+          console.log('已加载保存的学生信息，可以继续之前的咨询');
+        }
+      } catch (error) {
+        // 静默处理错误，不影响用户体验
+        console.debug('检查保存的学生信息时发生错误:', error);
+      }
+    };
+    
+    checkExistingStudentData();
+  }, [setStudentData]);
+  
+  // 添加一个简单的提示，如果有保存的数据，让用户知道可以继续
   
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -74,15 +82,15 @@ export default function InfoCollection() {
   };
   
   // 处理民族选择
-  const handleEthnicitySelect = (ethnicity: string) => {
-    setFormData(prev => ({ ...prev, ethnicity }));
-    setIsEthnicityDropdownOpen(false);
+  const handleMinzuSelect = (minzu: string) => {
+    setFormData(prev => ({ ...prev, minzu }));
+    setIsMinzuDropdownOpen(false);
     
-    // Clear error when ethnicity is selected
-    if (errors.ethnicity) {
+    // Clear error when minzu is selected
+    if (errors.minzu) {
       setErrors(prev => {
         const newErrors = { ...prev };
-        delete newErrors.ethnicity;
+        delete newErrors.minzu;
         return newErrors;
       });
     }
@@ -96,9 +104,9 @@ export default function InfoCollection() {
     : provinces;
   
   // 过滤民族列表
-  const filteredEthnicities = ethnicitySearchTerm
+  const filteredEthnicities = minzuSearchTerm
     ? ethnicities.filter(ethnicity => 
-        ethnicity.includes(ethnicitySearchTerm)
+        ethnicity.includes(minzuSearchTerm)
       )
     : ethnicities;
   
@@ -108,7 +116,13 @@ export default function InfoCollection() {
     if (!formData.examType) newErrors.examType = "请选择考试类型";
     if (!formData.studentType) newErrors.studentType = "请选择考生类型";
     if (!formData.province) newErrors.province = "请选择生源省份";
-    if (!formData.ethnicity) newErrors.ethnicity = "请选择民族";
+    if (!formData.minzu) newErrors.minzu = "请选择民族";
+    // 手机号为必填项，验证格式
+    if (!formData.phone) {
+      newErrors.phone = "请输入手机号";
+    } else if (!/^1[3-9]\d{9}$/.test(formData.phone)) {
+      newErrors.phone = "请输入有效的手机号码";
+    }
      // 分数为选填，但如果填写了则验证格式
      if (formData.score && (isNaN(Number(formData.score)) || Number(formData.score) < 0)) {
        newErrors.score = "请输入有效的分数";
@@ -118,7 +132,7 @@ export default function InfoCollection() {
     return Object.keys(newErrors).length === 0;
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) return;
@@ -129,13 +143,26 @@ export default function InfoCollection() {
       // Save form data to context
       setStudentData(formData);
       
-      // Save form data to local storage for future visits
-      localStorage.setItem('studentData', JSON.stringify(formData));
+      // 尝试保存到Redis
+      await saveStudentDataToRedis(formData);
       
-      // Navigate to Q&A page
-      navigate('/qa');
+      // 先显示成功消息
+      toast.success("信息提交成功！");
+      
+      // 不直接跳转，而是检查路径是否存在或使用备选方案
+      setTimeout(() => {
+        try {
+          // 尝试使用History API，这样如果页面不存在可以捕获错误
+          window.history.pushState({}, '', '/qa');
+          // 重新加载以触发路由
+          window.location.reload();
+        } catch (error) {
+          console.warn('无法跳转到qa页面，显示提示信息:', error);
+          toast.info('已保存您的信息，请刷新页面或联系管理员');
+        }
+      }, 1000);
     } catch (error) {
-      toast.error("提交失败，请重试");
+      toast.error("提交失败，但您的信息已保存在本地");
       console.error("Form submission error:", error);
     } finally {
       setIsSubmitting(false);
@@ -158,7 +185,7 @@ export default function InfoCollection() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Exam Type */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">考试类型</label>
+            <label className="block text-sm font-medium text-gray-700">考试类型 <span className="text-red-500">*</span></label>
             <div className="grid grid-cols-2 gap-3">
               {["春季统考", "秋季统考"].map(type => (
                 <label key={type} className="relative">
@@ -188,7 +215,7 @@ export default function InfoCollection() {
           
           {/* Student Type */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">考生类型</label>
+            <label className="block text-sm font-medium text-gray-700">考生类型 <span className="text-red-500">*</span></label>
             <select
               name="studentType"
               value={formData.studentType}
@@ -208,7 +235,7 @@ export default function InfoCollection() {
           
           {/* Province with Search and Dropdown */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">生源省份</label>
+            <label className="block text-sm font-medium text-gray-700">生源省份 <span className="text-red-500">*</span></label>
             <div className="relative">
               {/* Province Input */}
               <div 
@@ -270,31 +297,31 @@ export default function InfoCollection() {
           
           {/* Ethnicity with Search and Dropdown */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">民族</label>
+            <label className="block text-sm font-medium text-gray-700">民族 <span className="text-red-500">*</span></label>
             <div className="relative">
               {/* Ethnicity Input */}
               <div 
                 className={`
                   w-full rounded-xl border border-gray-300 p-4 text-gray-700 cursor-pointer
-                  ${formData.ethnicity ? 'text-blue-600' : 'text-gray-400'}
+                  ${formData.minzu ? 'text-blue-600' : 'text-gray-400'}
                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all
                 `}
-                onClick={() => setIsEthnicityDropdownOpen(!isEthnicityDropdownOpen)}
+                onClick={() => setIsMinzuDropdownOpen(!isMinzuDropdownOpen)}
               >
-                {formData.ethnicity || "请选择民族"}
-                <i className={`fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform ${isEthnicityDropdownOpen ? 'rotate-180' : ''}`}></i>
+                {formData.minzu || "请选择民族"}
+                <i className={`fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform ${isMinzuDropdownOpen ? 'rotate-180' : ''}`}></i>
               </div>
               
               {/* Dropdown with Search */}
-              {isEthnicityDropdownOpen && (
+              {isMinzuDropdownOpen && (
                 <div className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 z-10 max-h-60 overflow-y-auto">
                   {/* Search Input */}
                   <div className="p-3 border-b border-gray-200">
                     <input
                       type="text"
                       placeholder="搜索民族..."
-                      value={ethnicitySearchTerm}
-                      onChange={(e) => setEthnicitySearchTerm(e.target.value)}
+                      value={minzuSearchTerm}
+                      onChange={(e) => setMinzuSearchTerm(e.target.value)}
                       className="w-full rounded-lg border border-gray-300 p-2 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     />
                   </div>
@@ -307,11 +334,11 @@ export default function InfoCollection() {
                           key={ethnicity}
                           className={`
                             block w-full text-left px-4 py-2 rounded-lg transition-colors
-                            ${formData.ethnicity === ethnicity 
+                            ${formData.minzu === ethnicity 
                               ? 'bg-blue-50 text-blue-600' 
                               : 'hover:bg-gray-100 text-gray-700'}
                           `}
-                          onClick={() => handleEthnicitySelect(ethnicity)}
+                          onClick={() => handleMinzuSelect(ethnicity)}
                         >
                           {ethnicity}
                         </div>
@@ -325,8 +352,25 @@ export default function InfoCollection() {
                 </div>
               )}
             </div>
-            {errors.ethnicity && (
-              <p className="text-red-500 text-xs mt-1">{errors.ethnicity}</p>
+            {errors.minzu && (
+              <p className="text-red-500 text-xs mt-1">{errors.minzu}</p>
+            )}
+          </div>
+          
+          {/* Phone */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">手机号码 <span className="text-red-500">*</span></label>
+            <input
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="请输入您的手机号码"
+              className="w-full rounded-xl border border-gray-300 p-4 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+              maxLength={11}
+            />
+            {errors.phone && (
+              <p className="text-red-500 text-xs mt-1">{errors.phone}</p>
             )}
           </div>
           

@@ -5,7 +5,7 @@ interface StudentData {
   examType: string;
   studentType: string;
   province: string;
-  ethnicity: string;
+  minzu: string;
   score: string;
 }
 

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
+import { safeSetItem, safeGetItem, STORAGE_EXPIRY_TIME } from '../lib/utils';
 
 type Theme = 'light' | 'dark';
 
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem('theme') as Theme;
+    const savedTheme = safeGetItem('theme');
     if (savedTheme) {
-      return savedTheme;
+      return savedTheme as Theme;
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
@@ -14,7 +15,7 @@ export function useTheme() {
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(theme);
-    localStorage.setItem('theme', theme);
+    safeSetItem('theme', theme, STORAGE_EXPIRY_TIME); // 主题设置也只保留30分钟
   }, [theme]);
 
   const toggleTheme = () => {
@@ -26,4 +27,4 @@ export function useTheme() {
     toggleTheme,
     isDark: theme === 'dark'
   };
-} 
+}

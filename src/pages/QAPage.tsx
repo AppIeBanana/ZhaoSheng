@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStudentData } from '@/contexts/studentContext.tsx';
-import { Message, sendMessageToAPIStream } from '@/lib/api';
+import { Message, sendMessageToAPIStream } from '@/lib/coze_api';
 import { toast } from 'sonner';
 import { questionCategories, questionsByCategory, getRandomQuestions } from '@/data/questionsData';
 

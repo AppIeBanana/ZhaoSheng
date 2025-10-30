@@ -1,0 +1,5 @@
+{
+    "github-enterprise.uri": "https://172.21.9.233",
+    "css.lint.unknownAtRules": "ignore",
+    "scss.lint.unknownAtRules": "ignore"
+}

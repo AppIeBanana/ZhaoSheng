@@ -69,20 +69,55 @@ export function safeGetItem(key: string): any | null {
     const itemStr = localStorage.getItem(key);
     if (!itemStr) return null;
     
-    const item: StorageItem = JSON.parse(itemStr);
+    // 尝试解析JSON
+    let item: StorageItem;
+    try {
+      item = JSON.parse(itemStr);
+    } catch (parseError) {
+      console.error('localStorage解析失败，删除损坏的数据:', parseError);
+      // 解析失败，删除损坏的数据
+      try {
+        localStorage.removeItem(key);
+      } catch (removeError) {
+        console.error('删除损坏的localStorage项失败:', removeError);
+      }
+      return null;
+    }
+    
+    // 检查数据格式是否正确
+    if (!item || typeof item.timestamp !== 'number' || typeof item.expiry !== 'number') {
+      console.error('localStorage数据格式不正确，删除无效数据');
+      try {
+        localStorage.removeItem(key);
+      } catch (removeError) {
+        console.error('删除无效的localStorage项失败:', removeError);
+      }
+      return null;
+    }
+    
     const now = Date.now();
     
     // 检查是否过期
     if (now - item.timestamp > item.expiry) {
       // 自动删除过期数据
-      localStorage.removeItem(key);
-      console.log(`localStorage项 ${key} 已过期，自动删除`);
+      try {
+        localStorage.removeItem(key);
+        console.log(`localStorage项 ${key} 已过期，自动删除`);
+      } catch (removeError) {
+        console.error('删除过期的localStorage项失败:', removeError);
+      }
       return null;
     }
     
     return item.value;
   } catch (error) {
     console.error('localStorage读取失败:', error);
+    // 如果读取失败，尝试删除该项
+    try {
+      localStorage.removeItem(key);
+    } catch (removeError) {
+      console.error('删除localStorage项失败:', removeError);
+    }
     return null;
   }
 }

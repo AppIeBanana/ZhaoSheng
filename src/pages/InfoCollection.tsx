@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStudentData } from '@/contexts/studentContext.tsx';
 // import { useWechatAuthContext } from '@/contexts/wechatAuthContext.tsx';
 import { toast } from 'sonner';
@@ -9,6 +10,7 @@ import { saveStudentDataToRedis, getStudentDataFromRedis } from '@/lib/redis.ts'
 export default function InfoCollection() {
   const { setStudentData } = useStudentData();
   // const { isAuthenticated } = useWechatAuthContext();
+  const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
     examType: "",
@@ -149,15 +151,12 @@ export default function InfoCollection() {
       // 先显示成功消息
       toast.success("信息提交成功！");
       
-      // 不直接跳转，而是检查路径是否存在或使用备选方案
+      // 使用React Router的导航功能跳转到QA页面
       setTimeout(() => {
         try {
-          // 尝试使用History API，这样如果页面不存在可以捕获错误
-          window.history.pushState({}, '', '/qa');
-          // 重新加载以触发路由
-          window.location.reload();
+          navigate('/qa');
         } catch (error) {
-          console.warn('无法跳转到qa页面，显示提示信息:', error);
+          console.warn('导航失败:', error);
           toast.info('已保存您的信息，请刷新页面或联系管理员');
         }
       }, 1000);

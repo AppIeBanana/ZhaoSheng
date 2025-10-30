@@ -8,17 +8,17 @@ export interface Message {
 // Mock API call to simulate responses
 export async function* sendMessageToAPIStream(message: string, studentData: any): AsyncGenerator<string> {
   // Coze API endpoint - updated to v3/chat as per requirements
-  const apiUrl = 'https://api.coze.cn/v3/chat';
+  const apiUrl = import.meta.env.VITE_COZE_API_URL || import.meta.env.COZE_API_URL;
   
   // API authorization token (provided by user)
-  const authToken = 'sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU'; // 用户提供的实际token
+  const authToken = import.meta.env.VITE_COZE_AUTH_TOKEN || import.meta.env.COZE_AUTH_TOKEN; // 从环境变量读取token
   
   try {
     // Prepare request data based on the new API format provided
     const requestData = {
-      bot_id: "7553550342269550632",
-      workflow_id: "7553548989958930470",
-      user_id: "123456789",
+      bot_id: import.meta.env.VITE_COZE_BOT_ID || import.meta.env.COZE_BOT_ID,
+      workflow_id: import.meta.env.VITE_COZE_WORKFLOW_ID || import.meta.env.COZE_WORKFLOW_ID,
+      user_id: "123456789", // 可以考虑也从环境变量读取
       stream: true,
       additional_messages: [
         {
@@ -96,9 +96,8 @@ export async function* sendMessageToAPIStream(message: string, studentData: any)
               try {
                 const eventData = JSON.parse(currentData);
                 
-                // Process different event types
-                if ((currentEvent === 'conversation.message.delta' || 
-                    (currentEvent === 'conversation.message.completed' && eventData.type === 'answer'))) {
+                // Process different event types - 只处理delta事件避免重复显示
+                if (currentEvent === 'conversation.message.delta' && eventData.type === 'answer') {
                   
                   // Parse content which is a JSON string
                   let contentJson;

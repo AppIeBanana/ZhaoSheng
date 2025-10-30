@@ -1,10 +1,10 @@
 {
-  "name": "project_template_react",
+  "name": "furan-ai-admission-system",
   "private": true,
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev:client": "vite --host --port 3303",
+    "dev:client": "vite --host --port 3000",
     "dev:backend": "cd backend && node server.js",
     "dev": "pnpm dev:client",
     "build:client": "vite build --outDir dist/static",

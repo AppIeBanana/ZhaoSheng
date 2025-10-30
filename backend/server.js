@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const redis = require('redis');
 const dotenv = require('dotenv');
+const fs = require('fs');
+const https = require('https');
 const app = express();
 
 // 加载环境变量
@@ -15,7 +17,7 @@ dotenv.config();
 app.use(cors({ 
   origin: [
     // 开发环境端口
-    'http://localhost:3000',
+    'http://localhost:3001',
     // 生产环境域名
     'https://zswd.fzrjxy.com'
   ], 
@@ -38,8 +40,8 @@ let currentRedisConfig = {
   password: process.env.VITE_REDIS_PASSWORD
 };
 
-// 端口配置：本地测试时默认3000端口，线上可通过.env中的PORT环境变量配置
-const PORT = process.env.VITE_PORT || 3000;
+// 端口配置：本地测试时使用3000端口，线上使用HTTPS 443端口
+const PORT = process.env.PORT || 3000;
 
 // 检查Redis连接状态的函数
 async function ensureRedisConnection() {
@@ -263,10 +265,24 @@ app.get('/api/health', async (req, res) => {
 });
 
 // 启动服务器
-app.listen(PORT, () => {
-  console.log(`后端服务器运行在 http://localhost:${PORT}`);
-  console.log(`Redis连接配置: 主机=${currentRedisConfig.host}, 端口=${currentRedisConfig.port}`);
-});
+if (PORT === 443) {
+    // HTTPS配置
+    const privateKey = fs.readFileSync(process.env.SSL_KEY_PATH || './ssl/private.key', 'utf8');
+    const certificate = fs.readFileSync(process.env.SSL_CERT_PATH || './ssl/certificate.crt', 'utf8');
+    const credentials = { key: privateKey, cert: certificate };
+  
+  const httpsServer = https.createServer(credentials, app);
+  httpsServer.listen(PORT, () => {
+    console.log(`后端HTTPS服务器运行在 https://localhost:${PORT}`);
+    console.log(`Redis连接配置: 主机=${currentRedisConfig.host}, 端口=${currentRedisConfig.port}`);
+  });
+} else {
+  // HTTP配置（开发环境）
+  app.listen(PORT, () => {
+    console.log(`后端服务器运行在 http://localhost:${PORT}`);
+    console.log(`Redis连接配置: 主机=${currentRedisConfig.host}, 端口=${currentRedisConfig.port}`);
+  });
+}
 
 // 优雅关闭
 process.on('SIGINT', async () => {

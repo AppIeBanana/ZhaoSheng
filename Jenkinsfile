@@ -213,7 +213,7 @@ pipeline {
                             scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
                             scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
                             # 确保部署目录和backend子目录存在
-                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH} ${DEPLOY_PATH}/backend"
+                            sh "ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} 'mkdir -p ${DEPLOY_PATH} ${DEPLOY_PATH}/backend'"
                             
                             # 复制环境变量文件前，确保文件存在
                             # 重新从凭据加载环境变量文件
@@ -225,8 +225,8 @@ pipeline {
                                 
                                 # 复制环境变量文件
                                 echo '复制环境变量文件到服务器...'
-                                scp -o StrictHostKeyChecking=no .env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
-                                scp -o StrictHostKeyChecking=no backend/.env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/backend/
+                                sh "scp -o StrictHostKeyChecking=no .env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
+                                sh "scp -o StrictHostKeyChecking=no backend/.env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/backend/"
                             }
                             
                             # 在部署服务器上加载镜像并启动服务

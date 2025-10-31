@@ -9,25 +9,13 @@ stages:
 
 variables:
   # Docker配置
-  DOCKER_IMAGE_NAME: 'zhaosheng-web'
-  DOCKER_CONTAINER_NAME: 'zhaosheng-web'
+  DOCKER_IMAGE_NAME: ${DOCKER_IMAGE_NAME}
+  DOCKER_CONTAINER_NAME: ${DOCKER_CONTAINER_NAME}
   # 部署服务器配置
-  DEPLOY_SERVER: '10.26.1.82'
-  DEPLOY_PATH: '/projects/ZhaoSheng'
+  DEPLOY_SERVER: ${DEPLOY_SERVER}
+  DEPLOY_PATH: ${DEPLOY_PATH}
   # 构建目录
-  BUILD_DIR: 'dist'
-  
-  # 注意：以下环境变量在实际使用时应通过GitLab CI/CD的Settings > CI/CD > Variables中设置
-  # 这里仅作为示例展示需要配置的变量
-  # VITE_BACKEND_API_URL: https://zswd.fzrjxy.com
-  # VITE_REDIS_HOST: 172.21.9.233
-  # VITE_REDIS_PORT: 6379
-  # VITE_COZE_AUTH_TOKEN: your_coze_token
-  # VITE_COZE_API_URL: https://api.coze.cn/v3/chat
-  # VITE_COZE_BOT_ID: your_bot_id
-  # VITE_COZE_WORKFLOW_ID: your_workflow_id
-  # NODE_ENV: production
-  # PORT: 443
+  BUILD_DIR: ${BUILD_DIR}
 
 # 安装依赖
 install_dependencies:
@@ -110,42 +98,28 @@ deploy_production:
     # 动态创建前端环境变量文件
     - ssh root@$DEPLOY_SERVER "cat > $DEPLOY_PATH/config/.env << 'EOF'
 
-      VITE_BACKEND_API_URL=${VITE_BACKEND_API_URL:-https://zswd.fzrjxy.com}
-
-
-      VITE_REDIS_HOST=${VITE_REDIS_HOST:-172.21.9.233}
-      VITE_REDIS_PORT=${VITE_REDIS_PORT:-6379}
-
-
-      VITE_APP_TITLE=福软招生智能问答
-
-
-      VITE_COZE_AUTH_TOKEN=${VITE_COZE_AUTH_TOKEN:-sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU}
-      VITE_COZE_API_URL=${VITE_COZE_API_URL:-https://api.coze.cn/v3/chat}
-      VITE_COZE_BOT_ID=${VITE_COZE_BOT_ID:-7553550342269550632}
-      VITE_COZE_WORKFLOW_ID=${VITE_COZE_WORKFLOW_ID:-7553548989958930470}
-
-
-      COZE_AUTH_TOKEN=${VITE_COZE_AUTH_TOKEN:-sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU}
-      COZE_API_URL=${VITE_COZE_API_URL:-https://api.coze.cn/v3/chat}
-      COZE_BOT_ID=${VITE_COZE_BOT_ID:-7553550342269550632}
-      COZE_WORKFLOW_ID=${VITE_COZE_WORKFLOW_ID:-7553548989958930470}
-
-
-      NODE_ENV=${NODE_ENV:-production}
-      PORT=${PORT:-443}
+      VITE_BACKEND_API_URL=${BACKEND_API_URL}
+      VITE_REDIS_HOST=${REDIS_HOST}
+      VITE_REDIS_PORT=${REDIS_PORT}
+      VITE_APP_TITLE=${APP_TITLE}
+      VITE_COZE_AUTH_TOKEN=${COZE_AUTH_TOKEN}
+      VITE_COZE_API_URL=${COZE_API_URL}
+      VITE_COZE_BOT_ID=${COZE_BOT_ID}
+      VITE_COZE_WORKFLOW_ID=${COZE_WORKFLOW_ID}
+      NODE_ENV=${NODE_ENV}
+      PORT=${PORT}
+      VITE_SSL_CERT_PATH=${SSL_CERT_PATH}
+      VITE_SSL_KEY_PATH=${SSL_KEY_PATH}
      EOF"
     
     # 动态创建后端环境变量文件
     - ssh root@$DEPLOY_SERVER "cat > $DEPLOY_PATH/config/backend.env << 'EOF'
 
-      REDIS_HOST=${VITE_REDIS_HOST:-172.21.9.233}
-      REDIS_PORT=${VITE_REDIS_PORT:-6379}
-      REDIS_PASSWORD=${REDIS_PASSWORD:-redisadmin}
-
-
-      NODE_ENV=${NODE_ENV:-production}
-      PORT=${BACKEND_PORT:-4431}
+      VITE_REDIS_HOST=${REDIS_HOST}
+      VITE_REDIS_PORT=${REDIS_PORT}
+      VITE_REDIS_PASSWORD=${REDIS_PASSWORD}
+      NODE_ENV=${NODE_ENV}
+      PORT=${BACKEND_PORT}
       EOF"
     
     # 停止并移除旧容器

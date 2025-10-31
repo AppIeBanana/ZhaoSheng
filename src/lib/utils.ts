@@ -8,7 +8,8 @@ export const STORAGE_EXPIRY_TIME = 60 * 60 * 1000;
 export const STORAGE_PRIORITIES: Record<string, number> = {
   'userId': 1,      // 用户ID优先级最高
   'studentData': 2,  // 学生数据优先级次之
-  'theme': 3         // 主题设置优先级最低
+  'chatMessages': 3,  // 聊天历史优先级再次之
+  'theme': 4         // 主题设置优先级最低
 };
 
 // 带过期时间的localStorage存储项接口

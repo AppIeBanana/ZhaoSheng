@@ -8,17 +8,21 @@ export interface Message {
 // Mock API call to simulate responses
 export async function* sendMessageToAPIStream(message: string, studentData: any): AsyncGenerator<string> {
   // Coze API endpoint - updated to v3/chat as per requirements
-  const apiUrl = import.meta.env.VITE_COZE_API_URL || import.meta.env.COZE_API_URL;
+  const apiUrl = import.meta.env.VITE_COZE_API_URL;
   
   // API authorization token (provided by user)
-  const authToken = import.meta.env.VITE_COZE_AUTH_TOKEN || import.meta.env.COZE_AUTH_TOKEN; // 从环境变量读取token
+  const authToken = import.meta.env.VITE_COZE_AUTH_TOKEN; // 从环境变量读取token
   
   try {
+    // 检查必要参数
+    if (!apiUrl || !authToken) {
+      throw new Error('VITE_COZE_API_URL or VITE_COZE_AUTH_TOKEN is not defined');
+    }
     // Prepare request data based on the new API format provided
     const requestData = {
-      bot_id: import.meta.env.VITE_COZE_BOT_ID || import.meta.env.COZE_BOT_ID,
-      workflow_id: import.meta.env.VITE_COZE_WORKFLOW_ID || import.meta.env.COZE_WORKFLOW_ID,
-      user_id: "123456789", // 可以考虑也从环境变量读取
+      bot_id: import.meta.env.VITE_COZE_BOT_ID,
+      workflow_id: import.meta.env.VITE_COZE_WORKFLOW_ID,
+      user_id: studentData.phone, // 使用学生填写的手机号，如果不存在则使用默认值
       stream: true,
       additional_messages: [
         {
@@ -28,6 +32,7 @@ export async function* sendMessageToAPIStream(message: string, studentData: any)
           type: "question"
         }
       ],
+      conversation_id: studentData.conversation_id,
       parameters: {
         // CONVERSATION_NAME: "talk",
         // USER_INPUT: message,
@@ -38,7 +43,10 @@ export async function* sendMessageToAPIStream(message: string, studentData: any)
         student_type: studentData.studentType
       }
     };
-    
+    if(!requestData.bot_id || !requestData.workflow_id) {
+      throw new Error('VITE_COZE_BOT_ID or VITE_COZE_WORKFLOW_ID is not defined');
+    }
+
     // Send HTTP POST request to Coze API
     const response = await fetch(apiUrl, {
       method: 'POST',

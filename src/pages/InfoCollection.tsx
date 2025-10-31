@@ -8,7 +8,7 @@ import { ethnicities } from '@/data/ethnicities.ts';
 import { saveStudentDataToRedis, getStudentDataFromRedis } from '@/lib/redis.ts';
 
 export default function InfoCollection() {
-  const { setStudentData } = useStudentData();
+  const { studentData, setStudentData } = useStudentData();
   // const { isAuthenticated } = useWechatAuthContext();
   const navigate = useNavigate();
   
@@ -21,25 +21,41 @@ export default function InfoCollection() {
     phone: ""
   });
   
+  // 当studentData变化时，将其设置到formData中
+  useEffect(() => {
+    if (studentData) {
+      setFormData(prev => ({
+        ...prev,
+        ...studentData
+      }));
+    }
+  }, [studentData]);
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   // 添加搜索关键词状态
   const [provinceSearchTerm, setProvinceSearchTerm] = useState("");
   const [minzuSearchTerm, setMinzuSearchTerm] = useState("");
-  // 下拉框展开状态
-  const [isProvinceDropdownOpen, setIsProvinceDropdownOpen] = useState(false);
-  const [isMinzuDropdownOpen, setIsMinzuDropdownOpen] = useState(false);
+  // 下拉框展开状态 - 使用一个状态变量来管理当前打开的下拉框
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  
+  // 处理下拉框的打开/关闭
+  const toggleDropdown = (dropdownType: string) => {
+    // 如果点击的是当前打开的下拉框，则关闭；否则打开新的下拉框
+    setOpenDropdown(prev => prev === dropdownType ? null : dropdownType);
+  };
   
   // 检查是否已有学生信息，但不再自动跳转
+  // 注意：我们现在主要通过StudentContext的localStorage持久化来管理数据
+  // 这个useEffect可以保留作为后备，但主要逻辑已经在StudentContext中实现
   useEffect(() => {
     const checkExistingStudentData = async () => {
       try {
-        // 从本地存储获取数据（我们已经优化了redis.ts，会优先返回localStorage数据）
+        // 从本地存储获取数据（作为后备方案）
         const studentData = await getStudentDataFromRedis();
         
-        if (studentData) {
-          // 如果成功获取到数据，设置到context中
-          // 但不自动跳转，让用户通过点击按钮来决定是否继续
+        if (studentData && !formData.examType) {
+          // 如果成功获取到数据且表单为空，设置到context中
           setStudentData(studentData);
           console.log('已加载保存的学生信息，可以继续之前的咨询');
         }
@@ -50,7 +66,7 @@ export default function InfoCollection() {
     };
     
     checkExistingStudentData();
-  }, [setStudentData]);
+  }, [setStudentData, formData.examType]);
   
   // 添加一个简单的提示，如果有保存的数据，让用户知道可以继续
   
@@ -71,7 +87,7 @@ export default function InfoCollection() {
   // 处理省份选择
   const handleProvinceSelect = (province: string) => {
     setFormData(prev => ({ ...prev, province }));
-    setIsProvinceDropdownOpen(false);
+    setOpenDropdown(null); // 关闭所有下拉框
     
     // Clear error when province is selected
     if (errors.province) {
@@ -86,7 +102,7 @@ export default function InfoCollection() {
   // 处理民族选择
   const handleMinzuSelect = (minzu: string) => {
     setFormData(prev => ({ ...prev, minzu }));
-    setIsMinzuDropdownOpen(false);
+    setOpenDropdown(null); // 关闭所有下拉框
     
     // Clear error when minzu is selected
     if (errors.minzu) {
@@ -172,8 +188,8 @@ export default function InfoCollection() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-8">
       {/* Header */}
       <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i className="fa-solid fa-graduation-cap text-white text-2xl"></i>
+        <div className="w-15% h-15% max-w-32 max-h-32 mx-auto mb-4">
+          <img src="/imgs/校徽.png" alt="福州软件职业技术学院校徽" className="w-full h-full object-contain" />
         </div>
         <h1 className="text-[clamp(1.5rem,5vw,2rem)] font-bold text-gray-800 mb-2">新生信息查询</h1>
         <p className="text-gray-600">请填写以下信息，以便为您提供个性化咨询</p>
@@ -243,14 +259,14 @@ export default function InfoCollection() {
                   ${formData.province ? 'text-blue-600' : 'text-gray-400'}
                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all
                 `}
-                onClick={() => setIsProvinceDropdownOpen(!isProvinceDropdownOpen)}
+                onClick={() => toggleDropdown('province')}
               >
                 {formData.province || "请选择生源省份"}
-                <i className={`fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform ${isProvinceDropdownOpen ? 'rotate-180' : ''}`}></i>
+                <i className={`fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform ${openDropdown === 'province' ? 'rotate-180' : ''}`}></i>
               </div>
               
               {/* Dropdown with Search */}
-              {isProvinceDropdownOpen && (
+              {openDropdown === 'province' && (
                 <div className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 z-10 max-h-60 overflow-y-auto">
                   {/* Search Input */}
                   <div className="p-3 border-b border-gray-200">
@@ -305,14 +321,14 @@ export default function InfoCollection() {
                   ${formData.minzu ? 'text-blue-600' : 'text-gray-400'}
                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all
                 `}
-                onClick={() => setIsMinzuDropdownOpen(!isMinzuDropdownOpen)}
+                onClick={() => toggleDropdown('minzu')}
               >
                 {formData.minzu || "请选择民族"}
-                <i className={`fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform ${isMinzuDropdownOpen ? 'rotate-180' : ''}`}></i>
+                <i className={`fa-solid fa-chevron-down absolute right-4 top-1/2 transform -translate-y-1/2 transition-transform ${openDropdown === 'minzu' ? 'rotate-180' : ''}`}></i>
               </div>
               
               {/* Dropdown with Search */}
-              {isMinzuDropdownOpen && (
+              {openDropdown === 'minzu' && (
                 <div className="absolute left-0 right-0 mt-1 bg-white rounded-xl shadow-lg border border-gray-200 z-10 max-h-60 overflow-y-auto">
                   {/* Search Input */}
                   <div className="p-3 border-b border-gray-200">
@@ -419,8 +435,9 @@ export default function InfoCollection() {
       
       {/* Footer */}
       <div className="text-center text-xs text-gray-500">
-        <p>本系统信息仅供参考，具体以学校官方发布为准</p>
-        <p className="mt-1">如有疑问，请联系招生办公室</p>
+        <p>本系统信息仅供参考,具体以学校官方发布为准</p>
+        <p className="text-xs whitespace-pre-line">如有疑问,请联系招生热线：0591-83843292 或</p>
+        <p className="text-xs whitespace-pre-line">18905009495(微信同号)</p>
       </div>
     </div>
   );

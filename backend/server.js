@@ -16,7 +16,9 @@ dotenv.config();
 // - 生产环境：正式域名
 app.use(cors({ 
   origin: [
-    // 开发环境端口
+    // 开发环境端口 - 前端运行端口
+    'http://localhost:3000',
+    // 开发环境端口 - 后端端口
     'http://localhost:3001',
     // 生产环境域名
     'https://zswd.fzrjxy.com'
@@ -40,8 +42,8 @@ let currentRedisConfig = {
   password: process.env.VITE_REDIS_PASSWORD
 };
 
-// 端口配置：本地测试时使用3000端口，线上使用HTTPS 443端口
-const PORT = process.env.PORT || 3000;
+// 端口配置：从环境变量获取，默认值为开发环境端口3001
+const PORT = process.env.PORT || 3001;
 
 // 检查Redis连接状态的函数
 async function ensureRedisConnection() {
@@ -59,7 +61,7 @@ async function ensureRedisConnection() {
   }
 }
 
-async function connectRedis(host = process.env.REDIS_HOST || '172.21.9.233', port = parseInt(process.env.REDIS_PORT || '6379'), password = process.env.REDIS_PASSWORD || 'redisadmin') {
+async function connectRedis(host = process.env.VITE_REDIS_HOST, port = parseInt(process.env.VITE_REDIS_PORT), password = process.env.VITE_REDIS_PASSWORD) {
   try {
     // 如果已有连接，先断开
     if (redisClient) {
@@ -267,8 +269,8 @@ app.get('/api/health', async (req, res) => {
 // 启动服务器
 if (PORT === 443) {
     // HTTPS配置
-    const privateKey = fs.readFileSync(process.env.SSL_KEY_PATH || './ssl/private.key', 'utf8');
-    const certificate = fs.readFileSync(process.env.SSL_CERT_PATH || './ssl/certificate.crt', 'utf8');
+    const privateKey = fs.readFileSync(process.env.VITE_SSL_KEY_PATH || './ssl/private.key', 'utf8');
+    const certificate = fs.readFileSync(process.env.VITE_SSL_CERT_PATH || './ssl/certificate.crt', 'utf8');
     const credentials = { key: privateKey, cert: certificate };
   
   const httpsServer = https.createServer(credentials, app);

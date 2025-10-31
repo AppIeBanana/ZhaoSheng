@@ -3,7 +3,7 @@ import { safeSetItem, safeGetItem, safeRemoveItem, STORAGE_EXPIRY_TIME } from '.
 
 // 获取后端API基础URL
 export const getBackendApiUrl = (): string => {
-  return import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3000';
+  return import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001';
 };
 
 // 生成或获取用户唯一标识（30分钟过期）
@@ -76,8 +76,8 @@ export async function saveStudentDataToRedis(studentData: any): Promise<boolean>
         userId,
         studentData,
         redisConfig: {
-          host: import.meta.env.VITE_REDIS_HOST || '',
-          port: import.meta.env.VITE_REDIS_PORT || ''
+          host: import.meta.env.VITE_REDIS_HOST,
+          port: import.meta.env.VITE_REDIS_PORT
         }
       }),
       credentials: 'include'
@@ -218,7 +218,7 @@ export async function clearStudentDataFromRedis(): Promise<boolean> {
       body: JSON.stringify({
         redisConfig: {
           host: import.meta.env.VITE_REDIS_HOST || '',
-          port: import.meta.env.VITE_REDIS_PORT || ''
+      port: import.meta.env.VITE_REDIS_PORT || ''
         }
       })
     });

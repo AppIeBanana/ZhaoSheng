@@ -16,7 +16,7 @@ pipeline {
     // 构建参数，可在Jenkins界面手动触发时修改
     parameters {
         booleanParam(name: 'DEPLOY_TO_PROD', defaultValue: true, description: '是否部署到生产环境')
-        choice(name: 'BRANCH', choices: ['develop'], description: '选择要构建的分支')
+        choice(name: 'BRANCH', choices: ['main','develop','feature/stable'], description: '选择要构建的分支')
         string(name: 'DOCKER_IMAGE_NAME', defaultValue: 'zhaosheng-web', description: 'Docker镜像名称')
         string(name: 'DOCKER_CONTAINER_NAME', defaultValue: 'zhaosheng-web', description: 'Docker容器名称')
         string(name: 'DOCKER_IMAGE_PATH_NODE', defaultValue: '/docker_images/node-lts-jod.tar', description: 'Node基础镜像路径')

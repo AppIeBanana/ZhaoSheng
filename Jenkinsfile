@@ -212,9 +212,6 @@ pipeline {
                             echo '复制配置文件到服务器...'
                             scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
                             scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
-                            # 确保部署目录和backend子目录存在
-                            sh "ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} 'mkdir -p ${DEPLOY_PATH} ${DEPLOY_PATH}/backend'"
-                            
                             # 复制环境变量文件前，确保文件存在
                             # 重新从凭据加载环境变量文件
                             withCredentials([file(credentialsId: 'zhaosheng-env-file', variable: 'ENV_FILE'),

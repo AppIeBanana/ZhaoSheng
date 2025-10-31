@@ -10,7 +10,7 @@ pipeline {
     // 环境变量定义
     environment {
         // 生成版本号（基于构建ID和时间戳）
-        DOCKER_IMAGE_VERSION = "${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmmss')}"
+        DOCKER_IMAGE_VERSION = '${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmmss')}'
     }
     
     // 构建参数，可在Jenkins界面手动触发时修改
@@ -50,10 +50,10 @@ pipeline {
         // 阶段1: 拉取代码
         stage('Checkout Code') {
             steps {
-                echo "从 ${params.GITLAB_REPO} 拉取 ${params.BRANCH} 分支代码"
+                echo '从 ${params.GITLAB_REPO} 拉取 ${params.BRANCH} 分支代码'
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "*/${params.BRANCH}"]],
+                    branches: [[name: '*/${params.BRANCH}']],
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [
                         [$class: 'CleanBeforeCheckout'],
@@ -61,7 +61,7 @@ pipeline {
                     ],
                     submoduleCfg: [],
                     userRemoteConfigs: [[
-                        url: "${params.GITLAB_REPO}",
+                        url: '${params.GITLAB_REPO}',
                         credentialsId: '741bbcae-2cc0-44e1-b0aa-fb0e579a0354' // 在Jenkins中配置的GitLab凭证ID
                     ]]
                 ])
@@ -162,19 +162,19 @@ pipeline {
                         fi
                     '''
                     
-                    echo "构建Docker镜像，版本号：${DOCKER_IMAGE_VERSION}，优先使用本地基础镜像..."
+                    echo '构建Docker镜像，版本号：${DOCKER_IMAGE_VERSION}，优先使用本地基础镜像...'
                     
                     // 构建 Docker 镜像时传递环境变量参数
                     // 构建完整的 docker build 命令
                     def buildCommand = "docker build --network=host --pull=false " +
-                       "-t ${params.DOCKER_IMAGE_NAME}:latest -t ${params.DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} ."
+                       '-t ${params.DOCKER_IMAGE_NAME}:latest -t ${params.DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} .'
                     
-                    echo "执行构建命令: ${buildCommand}"
+                    echo '执行构建命令: ${buildCommand}'
                     sh buildCommand
                     
                     // 显示构建的镜像信息
                     echo "构建完成，镜像信息："
-                    sh "docker images ${params.DOCKER_IMAGE_NAME}"
+                    sh 'docker images ${params.DOCKER_IMAGE_NAME}'
                 }
             }
         }
@@ -320,7 +320,7 @@ EOF
         // 构建成功时
         success {
             echo '构建和部署成功！'
-            echo "应用已成功部署到 http://${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
+            echo '应用已成功部署到 http://${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}'
             // 可以添加通知，例如发送邮件或Slack消息
         }
         

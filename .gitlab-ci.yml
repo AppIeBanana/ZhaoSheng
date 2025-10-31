@@ -1,0 +1,207 @@
+# GitLab CI/CD 配置文件
+# 福软招生智能问答系统持续集成配置
+
+stages:
+  - install
+  - build
+  - test
+  - deploy
+
+variables:
+  # Docker配置
+  DOCKER_IMAGE_NAME: 'zhaosheng-web'
+  DOCKER_CONTAINER_NAME: 'zhaosheng-web'
+  # 部署服务器配置
+  DEPLOY_SERVER: '10.26.1.82'
+  DEPLOY_PATH: '/projects/ZhaoSheng'
+  # 构建目录
+  BUILD_DIR: 'dist'
+  
+  # 注意：以下环境变量在实际使用时应通过GitLab CI/CD的Settings > CI/CD > Variables中设置
+  # 这里仅作为示例展示需要配置的变量
+  # VITE_BACKEND_API_URL: https://zswd.fzrjxy.com
+  # VITE_REDIS_HOST: 172.21.9.233
+  # VITE_REDIS_PORT: 6379
+  # VITE_COZE_AUTH_TOKEN: your_coze_token
+  # VITE_COZE_API_URL: https://api.coze.cn/v3/chat
+  # VITE_COZE_BOT_ID: your_bot_id
+  # VITE_COZE_WORKFLOW_ID: your_workflow_id
+  # NODE_ENV: production
+  # PORT: 443
+
+# 安装依赖
+install_dependencies:
+  stage: install
+  image: node:18-alpine
+  script:
+    - echo "安装项目依赖..."
+    - npm install -g pnpm
+    - pnpm install
+    - cd backend && pnpm install
+  artifacts:
+    paths:
+      - node_modules/
+      - backend/node_modules/
+    cache:
+      key: $CI_COMMIT_REF_SLUG
+      paths:
+        - node_modules/
+        - backend/node_modules/
+
+# 构建前端
+build_frontend:
+  stage: build
+  image: node:18-alpine
+  needs:
+    - install_dependencies
+  script:
+    - echo "构建前端应用..."
+    - npm run build:client
+  artifacts:
+    paths:
+      - $BUILD_DIR/
+
+# 构建Docker镜像
+build_docker:
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  needs:
+    - build_frontend
+  script:
+    - echo "构建Docker镜像..."
+    - docker build -t $DOCKER_IMAGE_NAME:latest .
+    - docker tag $DOCKER_IMAGE_NAME:latest $DOCKER_IMAGE_NAME:$CI_COMMIT_SHA
+  only:
+    - main
+    - master
+
+# 简单测试
+simple_test:
+  stage: test
+  image: node:18-alpine
+  needs:
+    - install_dependencies
+  script:
+    - echo "执行简单测试..."
+    - echo "检查环境配置"
+    - node -v
+    - npm -v
+
+# 部署到生产服务器
+deploy_production:
+  stage: deploy
+  image: alpine:latest
+  needs:
+    - build_docker
+    - simple_test
+  before_script:
+    - apk add --no-cache openssh-client docker
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan -H $DEPLOY_SERVER >> ~/.ssh/known_hosts
+  script:
+    - echo "部署到生产服务器..."
+    # 创建环境配置目录
+    - ssh root@$DEPLOY_SERVER "mkdir -p $DEPLOY_PATH/config"
+    
+    # 动态创建前端环境变量文件
+    - ssh root@$DEPLOY_SERVER "cat > $DEPLOY_PATH/config/.env << 'EOF'
+
+      VITE_BACKEND_API_URL=${VITE_BACKEND_API_URL:-https://zswd.fzrjxy.com}
+
+
+      VITE_REDIS_HOST=${VITE_REDIS_HOST:-172.21.9.233}
+      VITE_REDIS_PORT=${VITE_REDIS_PORT:-6379}
+
+
+      VITE_APP_TITLE=福软招生智能问答
+
+
+      VITE_COZE_AUTH_TOKEN=${VITE_COZE_AUTH_TOKEN:-sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU}
+      VITE_COZE_API_URL=${VITE_COZE_API_URL:-https://api.coze.cn/v3/chat}
+      VITE_COZE_BOT_ID=${VITE_COZE_BOT_ID:-7553550342269550632}
+      VITE_COZE_WORKFLOW_ID=${VITE_COZE_WORKFLOW_ID:-7553548989958930470}
+
+
+      COZE_AUTH_TOKEN=${VITE_COZE_AUTH_TOKEN:-sat_dDeoCs8sajZ2TmC0KKU5LzdeQ5dSPgXVVqlYZ16L7f3vjDzMYkrYMj7BOgfdq0FU}
+      COZE_API_URL=${VITE_COZE_API_URL:-https://api.coze.cn/v3/chat}
+      COZE_BOT_ID=${VITE_COZE_BOT_ID:-7553550342269550632}
+      COZE_WORKFLOW_ID=${VITE_COZE_WORKFLOW_ID:-7553548989958930470}
+
+
+      NODE_ENV=${NODE_ENV:-production}
+      PORT=${PORT:-443}
+     EOF"
+    
+    # 动态创建后端环境变量文件
+    - ssh root@$DEPLOY_SERVER "cat > $DEPLOY_PATH/config/backend.env << 'EOF'
+
+      REDIS_HOST=${VITE_REDIS_HOST:-172.21.9.233}
+      REDIS_PORT=${VITE_REDIS_PORT:-6379}
+      REDIS_PASSWORD=${REDIS_PASSWORD:-redisadmin}
+
+
+      NODE_ENV=${NODE_ENV:-production}
+      PORT=${BACKEND_PORT:-4431}
+      EOF"
+    
+    # 停止并移除旧容器
+    - ssh root@$DEPLOY_SERVER "docker stop $DOCKER_CONTAINER_NAME || true && docker rm $DOCKER_CONTAINER_NAME || true"
+    # 拉取最新镜像
+    - ssh root@$DEPLOY_SERVER "docker pull $DOCKER_IMAGE_NAME:latest"
+    # 创建部署目录
+    - ssh root@$DEPLOY_SERVER "mkdir -p $DEPLOY_PATH"
+    # 启动新容器
+    - ssh root@$DEPLOY_SERVER "docker run -d \
+        --name $DOCKER_CONTAINER_NAME \
+        --restart unless-stopped \
+        -p 443:443 \
+        -p 82:82 \
+        -p 4431:4431 \
+        -v $DEPLOY_PATH/config/.env:/.env \
+        -v $DEPLOY_PATH/config/backend.env:/backend/.env \
+        -v $DEPLOY_PATH/ssl/fullchain.pem:/etc/letsencrypt/live/zswd.fzrjxy.com/fullchain.pem \
+        -v $DEPLOY_PATH/ssl/privkey.pem:/etc/letsencrypt/live/zswd.fzrjxy.com/privkey.pem \
+        -v $DEPLOY_PATH/logs:/var/log/nginx \
+        $DOCKER_IMAGE_NAME:latest"
+    - echo "部署完成！"
+  environment:
+    name: production
+    url: https://zswd.fzrjxy.com
+  only:
+    - main
+    - master
+
+# 部署到测试服务器（可选）
+deploy_staging:
+  stage: deploy
+  image: alpine:latest
+  needs:
+    - build_docker
+    - simple_test
+  before_script:
+    - apk add --no-cache openssh-client docker
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan -H $DEPLOY_SERVER >> ~/.ssh/known_hosts
+  script:
+    - echo "部署到测试环境..."
+    - ssh root@$DEPLOY_SERVER "docker stop ${DOCKER_CONTAINER_NAME}-staging || true && docker rm ${DOCKER_CONTAINER_NAME}-staging || true"
+    - ssh root@$DEPLOY_SERVER "docker pull $DOCKER_IMAGE_NAME:$CI_COMMIT_SHA"
+    - ssh root@$DEPLOY_SERVER "docker run -d \
+        --name ${DOCKER_CONTAINER_NAME}-staging \
+        --restart unless-stopped \
+        -p 8080:443 \
+        -v $DEPLOY_PATH/ssl/fullchain.pem:/etc/letsencrypt/live/zswd.fzrjxy.com/fullchain.pem \
+        -v $DEPLOY_PATH/ssl/privkey.pem:/etc/letsencrypt/live/zswd.fzrjxy.com/privkey.pem \
+        $DOCKER_IMAGE_NAME:$CI_COMMIT_SHA"
+  environment:
+    name: staging
+  only:
+    - develop
+    - feature/*
+    - bugfix/*

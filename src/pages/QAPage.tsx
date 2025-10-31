@@ -191,8 +191,8 @@ export default function QAPage() {
               <span className="text-blue-600 font-semibold">
                 福州软件职业技术学院AI招生
               </span>
-              <i className="fa-solid fa-home ml-2 text-gray-400"></i>
-              <i className="fa-solid fa-bars ml-3 text-gray-400"></i>
+              {/* <i className="fa-solid fa-home ml-2 text-gray-400"></i> */}
+          {/* <i className="fa-solid fa-bars ml-3 text-gray-400"></i> */}
             </div>
           </div>
           <div className="w-8"></div> {/* Placeholder for alignment */}

@@ -30,11 +30,11 @@ install_dependencies:
     paths:
       - node_modules/
       - backend/node_modules/
-    cache:
-      key: $CI_COMMIT_REF_SLUG
-      paths:
-        - node_modules/
-        - backend/node_modules/
+  cache:
+    key: $CI_COMMIT_REF_SLUG
+    paths:
+      - node_modules/
+      - backend/node_modules/
 
 # 构建前端
 build_frontend:

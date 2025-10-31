@@ -9,31 +9,48 @@ pipeline {
     
     // 环境变量定义
     environment {
-        // Docker相关配置
-        DOCKER_IMAGE_NAME = 'zhaosheng-web'
-        DOCKER_CONTAINER_NAME = 'zhaosheng-web'
-        DOCKER_IMAGE_PATH_NODE = '/docker_images/node-lts-jod.tar'
-        DOCKER_IMAGE_PATH_NGINX = '/docker_images/nginx-stable-perl.tar'
         // 生成版本号（基于构建ID和时间戳）
         DOCKER_IMAGE_VERSION = "${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmmss')}"
-        // 部署服务器配置
-        DEPLOY_SERVER = '10.26.1.82'
-        DEPLOY_PATH = '/projects/ZhaoSheng'
-        GITLAB_REPO = 'http://172.21.9.233:18080/Wanzhong/zhaosheng.git'
     }
     
     // 构建参数，可在Jenkins界面手动触发时修改
     parameters {
         booleanParam(name: 'DEPLOY_TO_PROD', defaultValue: true, description: '是否部署到生产环境')
-        choice(name: 'BRANCH', choices: ['main', 'develop'], description: '选择要构建的分支')
-
+        choice(name: 'BRANCH', choices: ['develop'], description: '选择要构建的分支')
+        string(name: 'DOCKER_IMAGE_NAME', defaultValue: 'zhaosheng-web', description: 'Docker镜像名称')
+        string(name: 'DOCKER_CONTAINER_NAME', defaultValue: 'zhaosheng-web', description: 'Docker容器名称')
+        string(name: 'DOCKER_IMAGE_PATH_NODE', defaultValue: '/docker_images/node-lts-jod.tar', description: 'Node基础镜像路径')
+        string(name: 'DOCKER_IMAGE_PATH_NGINX', defaultValue: '/docker_images/nginx-stable-perl.tar', description: 'Nginx基础镜像路径')
+        string(name: 'DEPLOY_SERVER', defaultValue: '10.26.1.82', description: '部署服务器地址')
+        string(name: 'DEPLOY_PATH', defaultValue: '/projects/ZhaoSheng', description: '部署路径')
+        string(name: 'GITLAB_REPO', defaultValue: 'http://172.21.9.233:18080/Wanzhong/zhaosheng.git', description: 'GitLab仓库地址')
     }
     
     stages {
+        // 阶段0: 加载环境变量
+        stage('Load Environment Variables') {
+            steps {
+                // 创建backend目录（如果不存在）
+                sh 'mkdir -p backend'
+                
+                // 加载根目录.env文件
+                withCredentials([file(credentialsId: 'zhaosheng-env-file', variable: 'ENV_FILE')]) {
+                    sh 'cp $ENV_FILE .env'
+                    echo '根目录.env文件已从凭据加载'
+                }
+                
+                // 加载backend目录.env文件
+                withCredentials([file(credentialsId: 'zhaosheng-backend-env-file', variable: 'BACKEND_ENV_FILE')]) {
+                    sh 'cp $BACKEND_ENV_FILE backend/.env'
+                    echo 'backend/.env文件已从凭据加载'
+                }
+            }
+        }
+        
         // 阶段1: 拉取代码
         stage('Checkout Code') {
             steps {
-                echo "从 ${GITLAB_REPO} 拉取 ${params.BRANCH} 分支代码"
+                echo "从 ${params.GITLAB_REPO} 拉取 ${params.BRANCH} 分支代码"
                 checkout([
                     $class: 'GitSCM',
                     branches: [[name: "*/${params.BRANCH}"]],
@@ -44,7 +61,7 @@ pipeline {
                     ],
                     submoduleCfg: [],
                     userRemoteConfigs: [[
-                        url: "${GITLAB_REPO}",
+                        url: "${params.GITLAB_REPO}",
                         credentialsId: '741bbcae-2cc0-44e1-b0aa-fb0e579a0354' // 在Jenkins中配置的GitLab凭证ID
                     ]]
                 ])
@@ -119,11 +136,11 @@ pipeline {
                     // 检查Node镜像，如果不存在则尝试从本地文件加载
                     echo '导入本地node镜像'
                     sh '''
-                    docker load -i "${DOCKER_IMAGE_PATH_NODE}" || echo 'Node本地镜像加载失败，将继续构建'
+                    docker load -i "${params.DOCKER_IMAGE_PATH_NODE}" || echo 'Node本地镜像加载失败，将继续构建'
                     '''
                     echo '导入本地nginx镜像'
                     sh '''
-                    docker load -i "${DOCKER_IMAGE_PATH_NGINX}" || echo 'Nginx本地镜像加载失败，将继续构建'
+                    docker load -i "${params.DOCKER_IMAGE_PATH_NGINX}" || echo 'Nginx本地镜像加载失败，将继续构建'
                     '''
                     
                     // 为本地基础镜像添加指定域名的标签，确保与Dockerfile一致
@@ -150,14 +167,14 @@ pipeline {
                     // 构建 Docker 镜像时传递环境变量参数
                     // 构建完整的 docker build 命令
                     def buildCommand = "docker build --network=host --pull=false " +
-                       "-t ${DOCKER_IMAGE_NAME}:latest -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} ."
+                       "-t ${params.DOCKER_IMAGE_NAME}:latest -t ${params.DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_VERSION} ."
                     
                     echo "执行构建命令: ${buildCommand}"
                     sh buildCommand
                     
                     // 显示构建的镜像信息
                     echo "构建完成，镜像信息："
-                    sh "docker images ${DOCKER_IMAGE_NAME}"
+                    sh "docker images ${params.DOCKER_IMAGE_NAME}"
                 }
             }
         }
@@ -169,9 +186,9 @@ pipeline {
             }
             steps {
                 script {
-                    echo '部署到服务器 ${DEPLOY_SERVER}:${DEPLOY_PATH}'
+                    echo '部署到服务器 ${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}'
                     // 将Docker镜像导出为tar文件（仍然使用latest标签，符合部署要求）
-                    sh 'docker save -o ${DOCKER_IMAGE_NAME}.tar ${DOCKER_IMAGE_NAME}:latest'
+                    sh 'docker save -o ${params.DOCKER_IMAGE_NAME}.tar ${params.DOCKER_IMAGE_NAME}:latest'
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', passphraseVariable: 'SSH_PASSPHRASE', usernameVariable: 'SSH_USERNAME')]) {
@@ -184,23 +201,27 @@ pipeline {
                             echo ${SSH_PASSPHRASE} | ssh-add ${SSH_KEY}
                             
                             # 确保部署目录存在
-                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
+                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${params.DEPLOY_SERVER} "mkdir -p ${params.DEPLOY_PATH}"
                             
                             # 复制Docker镜像
                             echo '复制Docker镜像到服务器...'
-                            scp -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
+                            scp -o StrictHostKeyChecking=no ${params.DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}
                             
                             # 复制必要的配置文件
                             echo '复制配置文件到服务器...'
-                            scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
-                            scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
+                            scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}
+                            scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}
+                            # 复制环境变量文件
+                            echo '复制环境变量文件到服务器...'
+                            scp -o StrictHostKeyChecking=no .env ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}
+                            scp -o StrictHostKeyChecking=no backend/.env ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}/backend/
                             
                             # 在部署服务器上加载镜像并启动服务
                             echo '在服务器上部署应用...'
-                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} << EOF
+                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${params.DEPLOY_SERVER} << EOF
                                 echo '开始部署应用...'
                                 # 进入部署目录
-                                cd ${DEPLOY_PATH}
+                                cd ${params.DEPLOY_PATH}
                                   
                                 # 停止并移除旧容器
                                 echo '停止并移除旧容器...'
@@ -209,7 +230,7 @@ pipeline {
                                 # 优先加载本地基础镜像文件
                                 echo '优先加载本地基础镜像文件...'
                                 # 加载Node基础镜像（适配指定域名的镜像）
-                                if [ -f "${DEPLOY_PATH}/node-lts-jod.tar" ]; then
+                                if [ -f "${params.DEPLOY_PATH}/node-lts-jod.tar" ]; then
                                     echo '发现本地Node基础镜像文件，正在加载...'
                                     docker load -i "${DEPLOY_PATH}/node-lts-jod.tar" || echo 'Node基础镜像加载失败，将继续部署'
                                     
@@ -226,7 +247,7 @@ pipeline {
                                 fi
                                   
                                 # 加载Nginx基础镜像（适配指定域名的镜像）
-                                if [ -f "${DEPLOY_PATH}/nginx-stable-perl.tar" ]; then
+                                if [ -f "${params.DEPLOY_PATH}/nginx-stable-perl.tar" ]; then
                                     echo '发现本地Nginx基础镜像文件，正在加载...'
                                     docker load -i "${DEPLOY_PATH}/nginx-stable-perl.tar" || echo 'Nginx基础镜像加载失败，将继续部署'
                                     
@@ -244,7 +265,7 @@ pipeline {
                                 
                                 # 加载应用镜像
                                 echo '加载应用镜像...'
-                                docker load -i ${DOCKER_IMAGE_NAME}.tar
+                                docker load -i ${params.DOCKER_IMAGE_NAME}.tar
                                 
                                 # 启动新容器
                                 echo '启动新容器...'
@@ -256,7 +277,7 @@ pipeline {
                                 
                                 # 检查容器状态
                                 echo "检查容器状态..."
-                                docker ps -f "name=${DOCKER_CONTAINER_NAME}"
+                                docker ps -f "name=${params.DOCKER_CONTAINER_NAME}"
                                 
                                 # 清理旧镜像
                                 echo '清理旧镜像...'
@@ -282,13 +303,13 @@ pipeline {
                                 
                                 # 简化验证 - 仅显示容器状态
                                 echo "部署完成，容器状态："
-                                docker ps -f "name=${DOCKER_CONTAINER_NAME}" || echo "容器状态检查跳过"
+                                docker ps -f "name=${params.DOCKER_CONTAINER_NAME}" || echo "容器状态检查跳过"
 EOF
                         '''
                     }
                     
                     // 清理本地临时文件
-                    sh 'rm -f ${DOCKER_IMAGE_NAME}.tar'
+                    sh 'rm -f ${params.DOCKER_IMAGE_NAME}.tar'
                 }
             }
         }
@@ -299,7 +320,7 @@ EOF
         // 构建成功时
         success {
             echo '构建和部署成功！'
-            echo '应用已成功部署到 http://${DEPLOY_SERVER}:${DEPLOY_PATH}'
+            echo "应用已成功部署到 http://${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
             // 可以添加通知，例如发送邮件或Slack消息
         }
         

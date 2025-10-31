@@ -135,13 +135,11 @@ pipeline {
                     echo '检查本地Docker镜像...'
                     // 检查Node镜像，如果不存在则尝试从本地文件加载
                     echo '导入本地node镜像'
-                    sh '''
-                    docker load -i "${params.DOCKER_IMAGE_PATH_NODE}" || echo 'Node本地镜像加载失败，将继续构建'
-                    '''
+                    def nodeImagePath = params.DOCKER_IMAGE_PATH_NODE
+                    sh "docker load -i \"${nodeImagePath}\" || echo 'Node本地镜像加载失败，将继续构建'"
                     echo '导入本地nginx镜像'
-                    sh '''
-                    docker load -i "${params.DOCKER_IMAGE_PATH_NGINX}" || echo 'Nginx本地镜像加载失败，将继续构建'
-                    '''
+                    def nginxImagePath = params.DOCKER_IMAGE_PATH_NGINX
+                    sh "docker load -i \"${nginxImagePath}\" || echo 'Nginx本地镜像加载失败，将继续构建'"
                     
                     // 为本地基础镜像添加指定域名的标签，确保与Dockerfile一致
                     sh '''

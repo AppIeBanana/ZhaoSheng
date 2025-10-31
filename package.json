@@ -4,12 +4,14 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev:client": "vite --host --port 3000",
+    "dev:client": "vite --host --port 3001",
+
     "dev:backend": "cd backend && node server.js",
     "dev": "pnpm dev:client",
+
+    "install:all": "pnpm install && cd backend && pnpm install",
     "build:client": "vite build --outDir dist/static",
-    "build": "rm -rf dist && pnpm build:client && cp package.json dist && touch dist/build.flag",
-    "install:all": "pnpm install && cd backend && pnpm install"
+    "build": "rm -rf dist && pnpm build:client && cp package.json dist && touch dist/build.flag"
   },
   "dependencies": {
     "clsx": "^2.1.1",

@@ -6,7 +6,7 @@ export interface Message {
 }
 
 // Mock API call to simulate responses
-export async function* sendMessageToAPIStream(message: string, studentData: any): AsyncGenerator<string> {
+export async function* sendMessageToAPIStream(message: string, userData: any): AsyncGenerator<string> {
   // Coze API endpoint - updated to v3/chat as per requirements
   const apiUrl = import.meta.env.VITE_COZE_API_URL;
   
@@ -22,7 +22,7 @@ export async function* sendMessageToAPIStream(message: string, studentData: any)
     const requestData = {
       bot_id: import.meta.env.VITE_COZE_BOT_ID,
       workflow_id: import.meta.env.VITE_COZE_WORKFLOW_ID,
-      user_id: studentData.phone, // 使用学生填写的手机号，如果不存在则使用默认值
+      user_id: userData.phone, // 使用用户填写的手机号，如果不存在则使用默认值
       stream: true,
       additional_messages: [
         {
@@ -32,15 +32,15 @@ export async function* sendMessageToAPIStream(message: string, studentData: any)
           type: "question"
         }
       ],
-      conversation_id: studentData.conversation_id,
+      conversation_id: userData.phone,
       parameters: {
         // CONVERSATION_NAME: "talk",
         // USER_INPUT: message,
-        exam_type: studentData.examType ,
-        minzu: studentData.minzu,
-        province: studentData.province,
-        score: studentData.score,
-        student_type: studentData.studentType
+        exam_type: userData.examType ,
+    ethnicity: userData.ethnicity,
+    province: userData.province,
+    score: userData.score,
+    user_type: userData.userType
       }
     };
     if(!requestData.bot_id || !requestData.workflow_id) {

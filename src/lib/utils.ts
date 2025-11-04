@@ -7,7 +7,7 @@ export const STORAGE_EXPIRY_TIME = 60 * 60 * 1000;
 // 数据项优先级配置（数字越小优先级越高）
 export const STORAGE_PRIORITIES: Record<string, number> = {
   'userId': 1,      // 用户ID优先级最高
-  'studentData': 2,  // 学生数据优先级次之
+  'userData': 2,  // 用户数据优先级次之
   'chatMessages': 3,  // 聊天历史优先级再次之
   'theme': 4         // 主题设置优先级最低
 };
@@ -185,6 +185,44 @@ export function safeRemoveItem(key: string): void {
   } catch (error) {
     console.error(`移除localStorage项 ${key} 失败:`, error);
   }
+}
+
+/**
+ * 带重试和超时的fetch函数
+ */
+export async function fetchWithRetry(url: string, options: RequestInit, retries = 2, timeoutMs = 10000): Promise<Response> {
+  try {
+    // 创建一个AbortController来处理超时
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    
+    // 合并options，添加signal
+    const fetchOptions = {
+      ...options,
+      signal: controller.signal
+    };
+    
+    const response = await fetch(url, fetchOptions);
+    
+    // 请求成功完成，清除超时定时器
+    clearTimeout(timeoutId);
+    return response;
+  } catch (error) {
+    if (retries > 0) {
+      console.log(`请求失败，正在进行第 ${3 - retries} 次重试...`);
+      // 指数退避
+      await new Promise(resolve => setTimeout(resolve, (3 - retries) * 500));
+      return fetchWithRetry(url, options, retries - 1, timeoutMs);
+    }
+    throw error;
+  }
+}
+
+/**
+ * 获取后端API基础URL
+ */
+export function getBackendApiUrl(): string {
+  return import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001';
 }
 
 export function cn(...inputs: ClassValue[]) {

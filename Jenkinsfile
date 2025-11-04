@@ -193,129 +193,94 @@ pipeline {
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', passphraseVariable: 'SSH_PASSPHRASE', usernameVariable: 'SSH_USERNAME')]) {
-                        // 使用ssh-agent自动处理密钥passphrase
+                        # 使用ssh-agent自动处理密钥passphrase
                         sh '''
                             # 启动ssh-agent
                             eval $(ssh-agent -s)
                             
                             # 添加私钥到ssh-agent，使用SSH_PASSPHRASE环境变量提供密码
-                            echo ${SSH_PASSPHRASE} | ssh-add ${SSH_KEY}
-                            
-                            # 确保部署目录存在
-                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} "mkdir -p ${DEPLOY_PATH}"
-                            
-                            # 复制Docker镜像
-                            echo '复制Docker镜像到服务器...'
-                            scp -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
-                            
-                            # 复制必要的配置文件
-                            echo '复制配置文件到服务器...'
-                            scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
-                            scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
-                            # 复制环境变量文件前，确保文件存在
-                            # 重新从凭据加载环境变量文件
-                            withCredentials([file(credentialsId: 'zhaosheng-env-file', variable: 'ENV_FILE'),
-                                           file(credentialsId: 'zhaosheng-backend-env-file', variable: 'BACKEND_ENV_FILE')]) {
-                                sh 'mkdir -p backend'
-                                sh 'cp $ENV_FILE .env'
-                                sh 'cp $BACKEND_ENV_FILE backend/.env'
-                                
-                                # 复制环境变量文件
-                                echo '复制环境变量文件到服务器...'
-                                sh "scp -o StrictHostKeyChecking=no .env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
-                                sh "scp -o StrictHostKeyChecking=no backend/.env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/backend/"
-                            }
-                            
-                            # 在部署服务器上加载镜像并启动服务
-                            echo '在服务器上部署应用...'
-                            ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} << EOF
-                                echo '开始部署应用...'
-                                # 进入部署目录
-                                cd ${DEPLOY_PATH}
-                                  
-                                # 停止并移除旧容器
-                                echo '停止并移除旧容器...'
-                                docker-compose down || true
-                                
-                                # 优先加载本地基础镜像文件
-                                echo '优先加载本地基础镜像文件...'
-                                # 加载Node基础镜像（适配指定域名的镜像）
-                                if [ -f "${DEPLOY_PATH}/node-lts-jod.tar" ]; then
-                                    echo '发现本地Node基础镜像文件，正在加载...'
-                                    docker load -i "${DEPLOY_PATH}/node-lts-jod.tar" || echo 'Node基础镜像加载失败，将继续部署'
-                                    
-                                    # 为加载的镜像添加指定域名的标签，确保与Dockerfile一致
-                                    if docker images | grep -q 'node:lts-jod' || docker images | grep -q 'library/node:lts-jod'; then
-                                        echo '为Node镜像添加指定域名标签...'
-                                        # 处理两种可能的镜像名称格式
-                                        docker tag node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || \
-                                        docker tag library/node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || \
-                                        echo 'Node镜像标签设置失败，但将继续部署'
-                                    fi
-                                else
-                                    echo '未发现本地Node基础镜像文件，跳过加载'
-                                fi
-                                  
-                                # 加载Nginx基础镜像（适配指定域名的镜像）
-                                if [ -f "${DEPLOY_PATH}/nginx-stable-perl.tar" ]; then
-                                    echo '发现本地Nginx基础镜像文件，正在加载...'
-                                    docker load -i "${DEPLOY_PATH}/nginx-stable-perl.tar" || echo 'Nginx基础镜像加载失败，将继续部署'
-                                    
-                                    # 为加载的镜像添加指定域名的标签，确保与Dockerfile一致
-                                    if docker images | grep -q 'nginx:stable-perl' || docker images | grep -q 'library/nginx:stable-perl'; then
-                                        echo '为Nginx镜像添加指定域名标签...'
-                                        # 处理两种可能的镜像名称格式
-                                        docker tag nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || \
-                                        docker tag library/nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || \
-                                        echo 'Nginx镜像标签设置失败，但将继续部署'
-                                    fi
-                                else
-                                    echo '未发现本地Nginx基础镜像文件，跳过加载'
-                                fi
-                                
-                                # 加载应用镜像
-                                echo '加载应用镜像...'
-                                docker load -i ${DOCKER_IMAGE_NAME}.tar
-                                
-                                # 启动新容器
-                                echo '启动新容器...'
-                                docker-compose up -d
-                                
-                                # 等待容器启动
-                                echo '等待容器启动...'
-                                sleep 5
-                                
-                                # 检查容器状态
-                                echo "检查容器状态..."
-                                docker ps -f "name=${DOCKER_CONTAINER_NAME}"
-                                
-                                # 清理旧镜像
-                                echo '清理旧镜像...'
-                                docker system prune -f
-                                
-                                # 验证部署代码已注释掉 - 修复算术表达式错误
-                                # 获取容器运行数量，确保结果为整数
-                                # CONTAINER_COUNT=$(docker ps | grep -c "${DOCKER_CONTAINER_NAME}" || echo 0)
-                                # CONTAINER_RUNNING=$CONTAINER_COUNT
-                                # 添加调试信息
-                                # echo "容器运行状态检查结果: CONTAINER_RUNNING=${CONTAINER_RUNNING}"
-                                
-                                # 使用 -gt 0 进行判断，更加直接
-                                # if [ ${CONTAINER_RUNNING} -gt 0 ]; then
-                                #     echo "部署成功! ${DOCKER_CONTAINER_NAME} 容器正在运行"
-                                # else
-                                #     echo "部署失败! ${DOCKER_CONTAINER_NAME} 容器未正常启动"
-                                #     # 显示更详细的容器状态信息用于调试
-                                #     echo "详细容器信息："
-                                #     docker ps -a | grep "${DOCKER_CONTAINER_NAME}" || echo "容器未找到"
-                                #     exit 1
-                                # fi
-                                
-                                # 简化验证 - 仅显示容器状态
-                                echo "部署完成，容器状态："
-                                docker ps -f "name=${params.DOCKER_CONTAINER_NAME}" || echo "容器状态检查跳过"
-EOF
+                            echo $SSH_PASSPHRASE | ssh-add $SSH_KEY
                         '''
+                        
+                        # 复制Docker镜像
+                        echo '复制Docker镜像到服务器...'
+                        sh "scp -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
+                        
+                        # 复制必要的配置文件
+                        echo '复制配置文件到服务器...'
+                        sh "scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
+                        sh "scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
+                        
+                        # 复制环境变量文件前，确保文件存在
+                        # 重新从凭据加载环境变量文件
+                        withCredentials([file(credentialsId: 'zhaosheng-env-file', variable: 'ENV_FILE'),
+                                        file(credentialsId: 'zhaosheng-backend-env-file', variable: 'BACKEND_ENV_FILE')]) {
+                            sh 'mkdir -p backend'
+                            sh 'cp $ENV_FILE .env'
+                            sh 'cp $BACKEND_ENV_FILE backend/.env'
+                            
+                            # 复制环境变量文件
+                            echo '复制环境变量文件到服务器...'
+                            sh "scp -o StrictHostKeyChecking=no .env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
+                            sh "scp -o StrictHostKeyChecking=no backend/.env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/backend"
+                        }
+                        
+                        # 在部署服务器上加载镜像并启动服务
+                        echo '在服务器上部署应用...'
+                        sh "ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} 'cd ${DEPLOY_PATH} && \
+                            echo "开始部署应用..." && \
+                            # 停止并移除旧容器 && \
+                            echo "停止并移除旧容器..." && \
+                            docker-compose down || true && \
+                            # 优先加载本地基础镜像文件 && \
+                            echo "优先加载本地基础镜像文件..." && \
+                            # 加载Node基础镜像（适配指定域名的镜像） && \
+                            if [ -f "${DEPLOY_PATH}/node-lts-jod.tar" ]; then \
+                                echo "发现本地Node基础镜像文件，正在加载..." && \
+                                docker load -i "${DEPLOY_PATH}/node-lts-jod.tar" || echo "Node基础镜像加载失败，将继续部署" && \
+                                # 为加载的镜像添加指定域名的标签，确保与Dockerfile一致 && \
+                                if docker images | grep -q "node:lts-jod" || docker images | grep -q "library/node:lts-jod"; then \
+                                    echo "为Node镜像添加指定域名标签..." && \
+                                    # 处理两种可能的镜像名称格式 && \
+                                    docker tag node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || \
+                                    docker tag library/node:lts-jod i0qlp8mg3an5h2.xuanyuan.run/library/node:lts-jod 2>/dev/null || \
+                                    echo "Node镜像标签设置失败，但将继续部署"; \
+                                fi; \
+                            else \
+                                echo "未发现本地Node基础镜像文件，跳过加载"; \
+                            fi && \
+                            # 加载Nginx基础镜像（适配指定域名的镜像） && \
+                            if [ -f "${DEPLOY_PATH}/nginx-stable-perl.tar" ]; then \
+                                echo "发现本地Nginx基础镜像文件，正在加载..." && \
+                                docker load -i "${DEPLOY_PATH}/nginx-stable-perl.tar" || echo "Nginx基础镜像加载失败，将继续部署" && \
+                                # 为加载的镜像添加指定域名的标签，确保与Dockerfile一致 && \
+                                if docker images | grep -q "nginx:stable-perl" || docker images | grep -q "library/nginx:stable-perl"; then \
+                                    echo "为Nginx镜像添加指定域名标签..." && \
+                                    # 处理两种可能的镜像名称格式 && \
+                                    docker tag nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || \
+                                    docker tag library/nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || \
+                                    echo "Nginx镜像标签设置失败，但将继续部署"; \
+                                fi; \
+                            else \
+                                echo "未发现本地Nginx基础镜像文件，跳过加载"; \
+                            fi && \
+                            # 加载应用镜像 && \
+                            echo "加载应用镜像..." && \
+                            docker load -i ${DOCKER_IMAGE_NAME}.tar && \
+                            # 启动新容器 && \
+                            echo "启动新容器..." && \
+                            docker-compose up -d && \
+                            # 等待容器启动 && \
+                            sleep 5 && \
+                            # 检查容器状态 && \
+                            echo "检查容器状态..." && \
+                            docker ps -f "name=${DOCKER_CONTAINER_NAME}" && \
+                            # 清理旧镜像 && \
+                            echo "清理旧镜像..." && \
+                            docker system prune -f && \
+                            # 简化验证 - 仅显示容器状态 && \
+                            echo "部署完成，容器状态：" && \
+                            docker ps -f "name=${DOCKER_CONTAINER_NAME}" || echo "容器状态检查跳过"'
                     }
                     
                     // 清理本地临时文件

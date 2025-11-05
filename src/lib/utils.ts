@@ -1,10 +1,10 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
-// 60分钟过期时间（毫秒）
+// 60分钟过期时间（毫秒）- 仅用于历史兼容性，项目现在只使用Redis和MongoDB
 export const STORAGE_EXPIRY_TIME = 60 * 60 * 1000;
 
-// 数据项优先级配置（数字越小优先级越高）
+// 数据项优先级配置 - 已禁用，保留仅为历史兼容性
 export const STORAGE_PRIORITIES: Record<string, number> = {
   'userId': 1,      // 用户ID优先级最高
   'userData': 2,  // 用户数据优先级次之
@@ -12,18 +12,20 @@ export const STORAGE_PRIORITIES: Record<string, number> = {
   'theme': 4         // 主题设置优先级最低
 };
 
-// 带过期时间的localStorage存储项接口
-interface StorageItem {
-  value: any;
-  timestamp: number;
-  expiry: number;
-}
+// 带过期时间的localStorage存储项接口（已禁用，保留注释）
+// interface StorageItem {
+//   value: any;
+//   timestamp: number;
+//   expiry: number;
+// }
 
 /**
- * 安全地存储数据到localStorage，带过期时间
- * 当空间不足时，自动清理最旧或优先级最低的数据
+ * 安全地存储数据到localStorage，带过期时间（已禁用）
  */
-export function safeSetItem(key: string, value: any, expiry: number = STORAGE_EXPIRY_TIME): boolean {
+export function safeSetItem(_key: string, _value: any, _expiry: number = STORAGE_EXPIRY_TIME): boolean {
+  console.warn('localStorage已禁用，改用Redis和MongoDB存储数据');
+  return false; // 已禁用，返回存储失败
+  /*
   try {
     const item: StorageItem = {
       value,
@@ -60,12 +62,16 @@ export function safeSetItem(key: string, value: any, expiry: number = STORAGE_EX
     console.error('localStorage存储失败:', error);
     return false;
   }
+  */
 }
 
 /**
- * 从localStorage获取数据，自动检查过期
+ * 从localStorage获取数据，自动检查过期（已禁用）
  */
-export function safeGetItem(key: string): any | null {
+export function safeGetItem(_key: string): any | null {
+  console.warn('localStorage已禁用，请从Redis和MongoDB获取数据');
+  return null; // 已禁用，始终返回null
+  /*
   try {
     const itemStr = localStorage.getItem(key);
     if (!itemStr) return null;
@@ -121,12 +127,15 @@ export function safeGetItem(key: string): any | null {
     }
     return null;
   }
+  */
 }
 
 /**
  * 清理localStorage中最旧或优先级最低的数据
  */
 export function cleanupOldestStorageData(): void {
+  console.warn('localStorage已禁用，不再清理本地存储数据');
+  /*
   try {
     // 获取所有存储项的信息
     const storageItems: Array<{
@@ -174,17 +183,21 @@ export function cleanupOldestStorageData(): void {
   } catch (error) {
     console.error('清理localStorage失败:', error);
   }
+  */
 }
 
 /**
- * 移除localStorage中的项
+ * 移除localStorage中的项（已禁用）
  */
-export function safeRemoveItem(key: string): void {
+export function safeRemoveItem(_key: string): void {
+  console.warn('localStorage已禁用，不再删除本地存储数据');
+  /*
   try {
     localStorage.removeItem(key);
   } catch (error) {
     console.error(`移除localStorage项 ${key} 失败:`, error);
   }
+  */
 }
 
 /**

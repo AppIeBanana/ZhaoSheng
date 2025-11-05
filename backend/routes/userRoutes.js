@@ -1,193 +1,229 @@
-// 用户数据路由
+// 导入所需模块
 const express = require('express');
 const router = express.Router();
-const { redisClient } = require('../config/redis');
-const {
-  saveUserDataToRedis,
-  getUserDataFromRedis,
-  clearUserRedisCache
-} = require('../services/redisDataService');
-const { saveUserDataToMongoDB, getUserDataFromMongoDB } = require('../services/mongodbDataService');
 
-/**
- * 保存用户数据到数据库和Redis缓存
- */
-router.post('/', async (req, res) => {
+// 导入数据服务
+const redisDataService = require('../services/redisDataService');
+const mongodbDataService = require('../services/mongodbDataService');
+
+// 验证手机号的辅助函数
+function validatePhone(phone) {
+  // 简单的手机号验证规则
+  const phoneRegex = /^1[3-9]\d{9}$/;
+  return phoneRegex.test(phone);
+}
+
+// 保存用户数据的路由 - 合并Redis和MongoDB的操作
+router.post('/saveUserData', async (req, res) => {
   try {
-    const { userId = req.body.userId, userData = req.body.userData || req.body } = req.body;
-    const { phone } = userData;
-    const host = req.body.host;
-    const port = req.body.port;
-    const { expireTime } = req.body.redisConfig || {};
+    const { userData } = req.body;
     
-    // 如果提供了自定义Redis配置，并且与当前配置不同，则重新连接
-    if (host && port && 
-        (host !== redisClient.getConfig().host || 
-         parseInt(port) !== redisClient.getConfig().port)) {
-      console.log(`切换到自定义Redis配置: ${host}:${port}`);
-      await redisClient.reconnect(host, parseInt(port));
+    // 验证请求数据
+    if (!userData || !userData.phone) {
+      return res.status(400).json({ error: '缺少必要的用户数据，特别是手机号' });
     }
     
-    // 验证必需字段
-    if (!phone) {
-      return res.status(400).json({ 
-        success: false, 
-        error: '手机号是必需的' 
-      });
+    // 验证手机号格式
+    if (!validatePhone(userData.phone)) {
+      return res.status(400).json({ error: '手机号格式不正确' });
     }
     
-    // 准备要保存的数据
-    const saveData = {
-      ...userData,
-      created_at: new Date(),
-      update_at: new Date()
-    };
+    // 1. 保存到Redis (设置过期时间为7天) - 使用与MongoDB一致的数据结构
+    const redisSaveResult = await redisDataService.saveUserDataToRedis(
+      userData.phone, 
+      userData, // 保持与MongoDB中data字段一致的数据结构
+      7 * 24 * 60 * 60 // 7天过期时间（秒）
+    );
     
-    // 删除不需要保存到数据库的字段
-    delete saveData.host;
-    delete saveData.port;
+    // 2. 保存到MongoDB (异步进行，不阻塞Redis响应)
+    mongodbDataService.saveUserDataToMongoDB(null, userData)
+      .then(() => console.log(`MongoDB 异步保存成功: phone=${userData.phone}`))
+      .catch(err => console.error(`MongoDB 异步保存失败: ${err.message}`));
     
-    // 保存到MongoDB（使用服务层）
-    const savedUser = await saveUserDataToMongoDB(userId || phone, saveData);
-    
-    if (!savedUser || !savedUser._id) {
-      throw new Error('保存用户数据失败，未获取到MongoDB生成的ID');
-    }
-    
-    console.log('用户数据已保存到MongoDB:', savedUser._id);
-    
-    // 保存到Redis缓存，使用手机号作为键
-    // 如果前端传递了过期时间，使用传递的过期时间，否则使用默认的1小时
-    await saveUserDataToRedis(saveData.phone, {
-      _id: savedUser._id.toString(),
-      ...saveData
-    }, expireTime);
-    
-    res.json({ 
-      success: true, 
+    // 3. 返回Redis的保存结果
+    res.status(200).json({
+      success: true,
       message: '用户数据保存成功',
       data: {
-        _id: savedUser._id.toString(),
-        ...saveData
+        redisResult: redisSaveResult,
+        phone: userData.phone
       }
     });
   } catch (error) {
     console.error('保存用户数据失败:', error);
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || '保存用户数据时发生错误' 
+    });
   }
 });
 
-/**
- * 从数据库获取用户数据 - 优先Redis缓存，其次MongoDB
- */
-router.get('/', async (req, res) => {
+// 获取用户数据的路由 - 优先从Redis读取，Redis未命中时从MongoDB读取
+router.get('/getUserData', async (req, res) => {
   try {
-    const { userId, host, port, phone } = req.query;
+    // 从请求参数中获取phone
+    const { phone } = req.query;
     
-    // 如果提供了自定义Redis配置，并且与当前配置不同，则重新连接
-    if (host && port && 
-        (host !== redisClient.getConfig().host || 
-         parseInt(port) !== redisClient.getConfig().port)) {
-      console.log(`切换到自定义Redis配置: ${host}:${port}`);
-      await redisClient.reconnect(host, parseInt(port));
+    // 验证必要参数
+    if (!phone) {
+      return res.status(400).json({ error: '缺少必要参数: phone' });
     }
     
-    if (!userId || !phone) {
-      return res.status(400).json({
-        success: false,
-        message: '缺少必要参数'
-      });
+    // 验证手机号格式
+    if (!validatePhone(phone)) {
+      return res.status(400).json({ error: '手机号格式不正确' });
     }
     
-    // 尝试从Redis获取数据
-    const redisData = await getUserDataFromRedis(phone, userId);
-    if (redisData) {
-      return res.status(200).json({
-        success: true,
-        data: redisData,
-        source: 'redis'
-      });
-    }
+    // 1. 首先尝试从Redis获取数据
+    let userData = await redisDataService.getUserDataFromRedis(phone);
     
-    // 从MongoDB获取数据（使用服务层）
-    // mongodbDataService严格使用手机号进行查询
-    const userData = await getUserDataFromMongoDB(userId, phone);
-    
+    // 2. 如果Redis中没有数据，则从MongoDB获取
     if (!userData) {
-      return res.status(404).json({
-        success: false,
-        message: '用户数据不存在'
-      });
+      userData = await mongodbDataService.getUserDataFromMongoDB(null, phone);
+      
+      // 3. 如果MongoDB中有数据，将其回填到Redis中
+      if (userData) {
+        await redisDataService.saveUserDataToRedis(
+          phone, 
+          userData,
+          7 * 24 * 60 * 60 // 7天过期时间（秒）
+        );
+      } else {
+        return res.status(404).json({ error: '用户数据不存在' });
+      }
     }
-    
-    // 更新Redis缓存，使用手机号作为键
-    // 使用默认的1小时过期时间
-    await saveUserDataToRedis(userData.phone, userData, 3600);
     
     res.status(200).json({
       success: true,
-      data: userData,
-      source: 'mongodb'
+      data: userData
     });
   } catch (error) {
     console.error('获取用户数据失败:', error);
-    res.status(500).json({
-      success: false,
-      message: '获取用户数据失败',
-      error: error.message
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || '获取用户数据时发生错误' 
     });
   }
 });
 
-/**
- * 清除用户数据 - 清除Redis缓存，MongoDB数据保留（避免误删用户历史数据）
- */
-router.delete('/:userId', async (req, res) => {
+// 更新用户数据的路由 - 同时更新Redis和MongoDB
+router.put('/updateUserData', async (req, res) => {
   try {
-    const { userId } = req.params;
-    const { redisConfig } = req.body;
+    const { userData } = req.body;
     
-    // 如果提供了自定义Redis配置，并且与当前配置不同，则重新连接
-    if (redisConfig && 
-        (redisConfig.host !== redisClient.getConfig().host || 
-         redisConfig.port !== redisClient.getConfig().port)) {
-      console.log(`切换到自定义Redis配置: ${redisConfig.host}:${redisConfig.port}`);
-      await redisClient.reconnect(redisConfig.host, redisConfig.port);
+    // 验证请求数据
+    if (!userData || !userData.phone) {
+      return res.status(400).json({ error: '缺少必要的用户数据，特别是手机号' });
     }
     
-    // 确保Redis客户端已连接
-    const isConnected = await redisClient.ensureConnection();
+    // 验证手机号格式
+    if (!validatePhone(userData.phone)) {
+      return res.status(400).json({ error: '手机号格式不正确' });
+    }
     
-    // 从Redis删除数据
-    try {
-      if (isConnected) {
-        // 先尝试获取userId对应的手机号
-        const phoneNumber = await redisClient.get(`userId:${userId}:phone`);
-        
-        // 删除相关的缓存键
-        const keysToDelete = [`user:${userId}`];
-        if (phoneNumber) {
-          keysToDelete.push(`user:phone:${phoneNumber}`, `userId:${userId}:phone`);
-        }
-        
-        await Promise.all(keysToDelete.map(key => redisClient.del(key)));
-        console.log('Redis缓存数据已清除');
-        res.json({ success: true, message: '缓存数据已清除' });
-      } else {
-        throw new Error('Redis连接不可用');
+    // 1. 更新Redis中的数据
+    const redisUpdateResult = await redisDataService.saveUserDataToRedis(
+      userData.phone, 
+      userData,
+      7 * 24 * 60 * 60 // 7天过期时间（秒）
+    );
+    
+    // 2. 更新MongoDB中的数据
+    const mongoUpdateResult = await mongodbDataService.updateUserData(null, userData);
+    
+    res.status(200).json({
+      success: true,
+      message: '用户数据更新成功',
+      data: {
+        redisResult: redisUpdateResult,
+        mongoResult: mongoUpdateResult,
+        phone: userData.phone,
+        _id: mongoUpdateResult._id
       }
-    } catch (redisError) {
-      console.error(`清除Redis缓存失败: ${redisError.message}`);
-      res.json({ 
-        success: false, 
-        message: '清除缓存失败',
-        redisError: redisError.message 
-      });
-    }
+    });
   } catch (error) {
-    console.error('清除数据失败:', error);
-    res.status(500).json({ success: false, error: error.message });
+    console.error('更新用户数据失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || '更新用户数据时发生错误' 
+    });
   }
 });
 
+// 继续添加删除路由和模块导出
+
+// 删除用户缓存的路 route - 保留MongoDB数据，仅清除Redis缓存
+router.delete('/clearCache', async (req, res) => {
+  try {
+    const { phone } = req.query;
+    
+    // 验证必要参数
+    if (!phone) {
+      return res.status(400).json({ error: '缺少必要参数: phone' });
+    }
+    
+    // 验证手机号格式
+    if (!validatePhone(phone)) {
+      return res.status(400).json({ error: '手机号格式不正确' });
+    }
+    
+    // 清除Redis缓存
+    const redisClearResult = await redisDataService.clearUserRedisCache(phone);
+    
+    // 记录操作但不清除MongoDB数据，避免误删用户历史数据
+    console.log(`用户缓存清除操作: phone=${phone}`);
+    
+    res.status(200).json({
+      success: true,
+      message: '用户缓存清除成功',
+      data: {
+        redisClearResult: redisClearResult,
+        phone: phone,
+        note: 'MongoDB数据已保留，仅清除Redis缓存'
+      }
+    });
+  } catch (error) {
+    console.error('清除用户缓存失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || '清除用户缓存时发生错误' 
+    });
+  }
+});
+
+// 检查用户是否存在的路由
+router.get('/checkUserExists', async (req, res) => {
+  try {
+    const { phone } = req.query;
+    
+    // 验证必要参数
+    if (!phone) {
+      return res.status(400).json({ error: '缺少必要参数: phone' });
+    }
+    
+    // 验证手机号格式
+    if (!validatePhone(phone)) {
+      return res.status(400).json({ error: '手机号格式不正确' });
+    }
+    
+    // 检查用户是否存在
+    const exists = await mongodbDataService.checkUserExists(null, phone);
+    
+    res.status(200).json({
+      success: true,
+      data: {
+        phone: phone,
+        exists: exists
+      }
+    });
+  } catch (error) {
+    console.error('检查用户是否存在失败:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message || '检查用户是否存在时发生错误' 
+    });
+  }
+});
+
+// 导出路由
 module.exports = router;

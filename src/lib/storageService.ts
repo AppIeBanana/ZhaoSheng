@@ -33,21 +33,58 @@ export async function saveUserData(userData: any): Promise<boolean> {
     };
     
     // 1. 持久化保存到MongoDB
-    const mongodbResult = await mongodbService.saveUserDataMongo(userId, userData, redisConfig);
+    let mongodbResult = await mongodbService.saveUserDataMongo(userId, userData, redisConfig);
     
     // 2. 缓存到Redis（设置1小时过期）
     const redisResult = await redisService.saveUserDataRedis(userId, userData);
     
-    // 确保MongoDB和Redis数据同步
+    // 确保MongoDB和Redis数据同步 - 添加重试机制
+    let finalRedisResult = redisResult;
+    
+    // 如果MongoDB保存成功但Redis缓存失败，尝试重试Redis操作
     if (mongodbResult && !redisResult) {
-      console.warn('MongoDB保存成功，但Redis缓存失败');
-      // 尝试重新缓存到Redis
-      await redisService.saveUserDataRedis(userId, userData);
-    } else if (!mongodbResult && redisResult) {
-      console.warn('Redis缓存成功，但MongoDB保存失败');
-      // 尝试重新保存到MongoDB
-      await mongodbService.saveUserDataMongo(userId, userData, redisConfig);
+      console.warn('MongoDB保存成功，但Redis缓存失败，开始重试...');
+      // 最多重试2次
+      let redisRetry = 0;
+      const maxRedisRetries = 2;
+      
+      while (redisRetry < maxRedisRetries) {
+        redisRetry++;
+        console.log(`Redis缓存重试 ${redisRetry}/${maxRedisRetries}`);
+        const retryResult = await redisService.saveUserDataRedis(userId, userData);
+        if (retryResult) {
+          console.log('Redis缓存重试成功');
+          finalRedisResult = true;
+          break;
+        }
+        // 等待1秒后重试
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    } 
+    
+    // 如果MongoDB保存失败但Redis缓存成功，尝试重试MongoDB操作
+    else if (!mongodbResult && redisResult) {
+      console.warn('Redis缓存成功，但MongoDB保存失败，开始重试...');
+      // 最多重试2次
+      let mongoRetry = 0;
+      const maxMongoRetries = 2;
+      
+      while (mongoRetry < maxMongoRetries) {
+        mongoRetry++;
+        console.log(`MongoDB保存重试 ${mongoRetry}/${maxMongoRetries}`);
+        const retryResult = await mongodbService.saveUserDataMongo(userId, userData, redisConfig);
+        if (retryResult) {
+          console.log('MongoDB保存重试成功');
+          mongodbResult = true;
+          break;
+        }
+        // 等待1秒后重试
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
+    
+    // 记录最终同步状态
+    console.log(`数据保存完成 - MongoDB: ${mongodbResult ? '成功' : '失败'}, Redis: ${finalRedisResult ? '成功' : '失败'}`);
     
     // 返回MongoDB的保存结果（以持久化存储为准）
     return mongodbResult;

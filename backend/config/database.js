@@ -1,5 +1,7 @@
 // MongoDB数据库连接配置
 const mongoose = require('mongoose');
+const { mongodbLogger } = require('../utils/logger');
+const config = require('./configLoader').default;
 let mongooseConnection;
 
 /**
@@ -8,12 +10,11 @@ let mongooseConnection;
  */
 async function connectMongoDB() {
   try {
-    // 直接使用.env文件中的MongoDB配置构建连接字符串
-    // 移除所有硬编码的默认值，完全依赖环境变量
-    const baseURI = process.env.MONGODB_URI || '';
-    const user = process.env.MONGODB_USER || '';
-    const password = process.env.MONGODB_PASSWORD || '';
-    const dbName = process.env.MONGODB_DB_NAME || '';
+    // 使用配置加载器获取MongoDB配置
+    const baseURI = config.MONGODB_URI;
+    const user = config.MONGODB_USER;
+    const password = config.MONGODB_PASSWORD;
+    const dbName = config.MONGODB_DB_NAME;
     
     // 构建带认证的连接字符串
     let mongoURI;
@@ -38,7 +39,8 @@ async function connectMongoDB() {
       maxPoolSize: 10                // 最大连接池大小
     });
     
-    console.log('MongoDB连接成功');
+    mongodbLogger.info('MongoDB连接成功');
+  console.log('MongoDB连接成功');
     
     // 尝试删除不需要的username索引以避免重复键错误
     try {
@@ -50,17 +52,21 @@ async function connectMongoDB() {
         const hasUsernameIndex = indexes.some(index => index.key && index.key.username !== undefined);
         
         if (hasUsernameIndex) {
-          console.log('检测到username索引，尝试删除...');
+          mongodbLogger.info('检测到username索引，尝试删除...');
+      console.log('检测到username索引，尝试删除...');
           await UserModel.collection.dropIndex('username_1');
-          console.log('username索引已删除');
+          mongodbLogger.info('username索引已删除');
+      console.log('username索引已删除');
         }
       }
     } catch (indexError) {
+      mongodbLogger.warn(`删除username索引时出错（可能索引不存在）: ${indexError.message}`);
       console.log(`删除username索引时出错（可能索引不存在）: ${indexError.message}`);
     }
     
     return true;
   } catch (error) {
+    mongodbLogger.error('MongoDB连接失败:', { error: error.message, stack: error.stack });
     console.error('MongoDB连接失败:', error.message);
     return false;
   }

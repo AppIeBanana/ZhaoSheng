@@ -1,7 +1,6 @@
 // 聊天记录路由
 const express = require('express');
 const router = express.Router();
-const { redisClient } = require('../config/redis');
 
 // 导入数据服务
 const { saveChatHistoryToRedis, getChatHistoryFromRedis } = require('../services/redisDataService');
@@ -12,22 +11,22 @@ const { saveChatHistoryToMongoDB, getChatHistoryFromMongoDB } = require('../serv
  */
 router.post('/', async (req, res) => {
   try {
-    const { user_id, messages, phone } = req.body;
+    const { messages, phone } = req.body;
     
-    if (!user_id) {
-      return res.status(400).json({ success: false, error: '用户ID不能为空' });
+    if (!phone) {
+      return res.status(400).json({ success: false, error: '手机号不能为空' });
     }
     
     if (!Array.isArray(messages)) {
       return res.status(400).json({ success: false, error: '消息列表格式错误' });
     }
     
-    // 保存到MongoDB（使用服务层）
-    await saveChatHistoryToMongoDB(user_id, messages, phone);
+    // 保存到MongoDB（使用服务层），第一个参数设为null
+    await saveChatHistoryToMongoDB(null, messages, phone);
     
-    // 保存到Redis缓存
+    // 保存到Redis缓存，第一个参数设为空字符串
     try {
-      await saveChatHistoryToRedis(user_id.toString(), messages, phone);
+      await saveChatHistoryToRedis('', messages, phone);
     } catch (error) {
       console.error('保存到Redis失败:', error);
     }
@@ -35,7 +34,7 @@ router.post('/', async (req, res) => {
     res.status(200).json({
       success: true,
       message: '聊天记录保存成功',
-      data: { user_id, messages }
+      data: { phone, messages }
     });
   } catch (error) {
     console.error('保存聊天记录失败:', error);
@@ -89,8 +88,8 @@ router.get('/', async (req, res) => {
         
         // 更新Redis缓存
         if (messages.length > 0) {
-          // 缓存聊天记录，使用phone作为键
-          await saveChatHistoryToRedis(phone, chatHistory);
+          // 缓存聊天记录，第一个参数设为空字符串
+          await saveChatHistoryToRedis('', chatHistory, phone);
         }
       }
     } catch (mongoError) {

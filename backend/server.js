@@ -6,9 +6,14 @@ const dotenv = require('dotenv');
 const fs = require('fs');
 const https = require('https');
 const mongoose = require('mongoose');
+const { systemLogger } = require('./utils/logger');
 
 // 加载环境变量
 dotenv.config();
+
+// 引入配置加载器
+const config = require('./config/configLoader').default;
+const { NODE_ENV } = require('./config/configLoader');
 
 // 初始化应用
 const app = express();
@@ -27,22 +32,35 @@ const userRoutes = require('./routes/userRoutes');
 const chatRoutes = require('./routes/chatRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 
-// 配置中间件
-app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'https://zswd.fzrjxy.com'
-  ],
+// 配置中间件 - 根据环境配置CORS
+const corsOptions = {
   methods: ['GET', 'POST', 'DELETE'],
   credentials: true
-}));
+};
+
+// 根据环境设置不同的CORS源
+if (NODE_ENV === 'development') {
+  corsOptions.origin = [
+    'http://localhost:3000',
+    'http://192.168.5.3:3000' // 局域网IP地址
+  ];
+} else {
+  // 生产环境设置
+  corsOptions.origin = [
+    'https://zswd.fzrjxy.com',
+    'http://175.42.63.9:82'
+  ];
+}
+
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
 // 请求日志中间件
 app.use((req, _, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  const logMessage = `[${new Date().toISOString()}] ${req.method} ${req.path}`;
+  systemLogger.info(logMessage, { ip: req.ip, method: req.method, path: req.path });
+  console.log(logMessage);
   next();
 });
 
@@ -51,8 +69,8 @@ app.use('/api/user-data', userRoutes);
 app.use('/api/chat-history', chatRoutes);
 app.use('/api/health', healthRoutes);
 
-// 端口配置
-const PORT = process.env.PORT || 3001;
+// 端口配置 - 使用配置加载器中的端口
+const PORT = config.PORT;
 
 // 启动服务器
 async function startServer() {
@@ -63,7 +81,12 @@ async function startServer() {
     // 确保Redis连接
     await ensureConnection();
     
-    if (PORT === 443) {
+    // 记录环境信息
+    systemLogger.info(`服务器启动 - 环境: ${NODE_ENV}, 端口: ${PORT}`);
+    console.log(`服务器启动 - 环境: ${NODE_ENV}, 端口: ${PORT}`);
+    
+    // 根据端口决定是否使用HTTPS
+    if (PORT === 443 || PORT === 4431) {
       // HTTPS配置
       const privateKey = fs.readFileSync(process.env.VITE_SSL_KEY_PATH || './ssl/private.key', 'utf8');
       const certificate = fs.readFileSync(process.env.VITE_SSL_CERT_PATH || './ssl/certificate.crt', 'utf8');
@@ -71,17 +94,32 @@ async function startServer() {
 
       const httpsServer = https.createServer(credentials, app);
       httpsServer.listen(PORT, () => {
-        console.log(`后端HTTPS服务器运行在 https://localhost:${PORT}`);
-        console.log('Redis连接配置将在首次访问时初始化');
+        const serverMessage = `后端HTTPS服务器运行在 https://localhost:${PORT}`;
+        systemLogger.info(serverMessage);
+        console.log(serverMessage);
+        
+        const redisInitMessage = 'Redis连接配置将在首次访问时初始化';
+        systemLogger.info(redisInitMessage);
+        console.log(redisInitMessage);
       });
     } else {
       // HTTP配置（开发环境）
-      app.listen(PORT, () => {
-        console.log(`后端服务器运行在 http://localhost:${PORT}`);
-        console.log('Redis连接配置将在首次访问时初始化');
+      app.listen(PORT, '0.0.0.0', () => {
+        const serverMessage = `后端服务器运行在 http://0.0.0.0:${PORT}`;
+        systemLogger.info(serverMessage);
+        console.log(serverMessage);
+        
+        const lanMessage = '服务器可通过局域网IP访问，支持多用户测试';
+        systemLogger.info(lanMessage);
+        console.log(lanMessage);
+        
+        const redisInitMessage = 'Redis连接配置将在首次访问时初始化';
+        systemLogger.info(redisInitMessage);
+        console.log(redisInitMessage);
       });
     }
   } catch (error) {
+    systemLogger.error('服务器启动失败:', { error: error.message, stack: error.stack });
     console.error('服务器启动失败:', error);
     process.exit(1);
   }
@@ -89,18 +127,25 @@ async function startServer() {
 
 // 优雅关闭
 process.on('SIGINT', async () => {
-  console.log('正在关闭服务器...');
+  const shutdownMessage = '正在关闭服务器...';
+  systemLogger.info(shutdownMessage);
+  console.log(shutdownMessage);
   
   try {
     // 关闭MongoDB连接
     if (mongoose.connection.readyState === 1) {
       await mongoose.disconnect();
-      console.log('MongoDB连接已关闭');
+      const mongoCloseMessage = 'MongoDB连接已关闭';
+      systemLogger.info(mongoCloseMessage);
+      console.log(mongoCloseMessage);
     }
     
-    console.log('服务器已成功关闭');
+    const successMessage = '服务器已成功关闭';
+    systemLogger.info(successMessage);
+    console.log(successMessage);
     process.exit(0);
   } catch (error) {
+    systemLogger.error('关闭服务器时出错:', { error: error.message, stack: error.stack });
     console.error('关闭服务器时出错:', error);
     process.exit(1);
   }

@@ -96,13 +96,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserData(data);
       // 只有当saveToServer为true时才保存到服务器
       if (saveToServer) {
-        // 保存到MongoDB（持久化）、Redis（缓存）和localStorage
+        // 保存到MongoDB（持久化）和Redis（缓存）
         // 以手机号为主键
         await saveUserData(data);
       } else {
-        // 仅更新localStorage，不调用服务器
-        const localStorageService = await import('./../lib/storage/localStorage');
-        localStorageService.saveUserDataLocal(data);
+        // 仅更新内存状态，不保存到任何存储
+        // 注释掉localStorage相关代码，只使用Redis和MongoDB
+        // const localStorageService = await import('./../lib/storage/localStorage');
+        // localStorageService.saveUserDataLocal(data);
+        console.log('仅更新内存状态，不保存到存储');
       }
       if (data.phone) {
         setCurrentPhone(data.phone);

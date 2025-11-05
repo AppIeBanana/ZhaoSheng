@@ -20,7 +20,7 @@ export async function saveUserDataRedis(userId: string, userData: any): Promise<
     }
 
     // Redis作为缓存层，调用与MongoDB相同的API端点（后端会自动同时更新Redis）
-    const response = await fetchWithRetry(`${getApiUrl()}/api/user-data`, {
+    const response = await fetchWithRetry(`${getApiUrl()}/api/user-data/saveUserData`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -67,7 +67,7 @@ export async function getUserDataRedis(userId: string, phone: string): Promise<a
     queryParams.append('phone', phone);
     queryParams.append('cache', 'true');
     
-    const url = `${getApiUrl()}/api/user-data?${queryParams.toString()}`;
+    const url = `${getApiUrl()}/api/user-data/getUserData?${queryParams.toString()}`;
     console.log(`请求URL: ${url}`);
     
     const response = await fetchWithRetry(

@@ -70,17 +70,36 @@ export default function MessageItem({
     );
   };
 
-  // 将文本中的URL转换为可点击链接
+  // 将文本中的URL转换为可点击链接或图片
   const formatMessageContent = (content: string) => {
     if (!content) return '';
     
     // 匹配常见URL格式的正则表达式
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     
-    // 替换URL为可点击的链接
+    // 替换URL为可点击的链接或图片
     const formattedContent = content.replace(
       urlRegex,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline break-all">$1</a>'
+      (match) => {
+        // 判断是否为图片URL
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
+        const isImage = imageExtensions.some(ext => 
+          match.toLowerCase().includes(ext) || 
+          // 对于可能没有扩展名但包含image相关参数的URL
+          match.includes('image=') || 
+          match.includes('img=') ||
+          // 匹配oceancloudapi.com等可能返回图片的API
+          match.includes('oceancloudapi.com')
+        );
+        
+        if (isImage) {
+          // 返回图片标签
+          return `<img src="${match}" alt="图片" class="max-w-full h-auto rounded-lg my-2" loading="lazy" />`;
+        } else {
+          // 返回普通链接
+          return `<a href="${match}" target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-700 underline break-all">${match}</a>`;
+        }
+      }
     );
     
     return formattedContent;

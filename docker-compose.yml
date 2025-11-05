@@ -12,8 +12,11 @@ services:
       - /var/www/certbot:/var/www/certbot
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ./ssl:/etc/nginx/ssl
+      # 挂载日志目录，实现日志持久化
+      - /var/log/zhaosheng:/app/backend/logs
     environment:
       - NODE_ENV=production
+      - LOG_DIR=/app/backend/logs
     networks:
       - app-network
 

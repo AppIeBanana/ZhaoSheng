@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Message } from '@/lib/coze_api';
-import { safeSetItem, STORAGE_EXPIRY_TIME } from '@/lib/utils';
+// 注释掉localStorage相关导入，只使用Redis和MongoDB
+// import { safeSetItem, STORAGE_EXPIRY_TIME } from '@/lib/utils';
 import { getChatHistory, saveChatHistory as saveChatToStorage, setCurrentPhone } from '@/lib/storageService';
 import { useUserData } from '@/contexts/userContext';
 
@@ -206,9 +207,10 @@ export default function useChatHistory() {
             console.log('保存聊天记录到服务器');
             saveChatToStorage(userData.phone, messagesToSave);
           } else {
-            // 如果没有手机号，仅保存到本地（临时存储）
-            console.warn('没有手机号，聊天记录仅临时保存');
-            safeSetItem('temp_chatMessages', messagesToSave, STORAGE_EXPIRY_TIME);
+            // 如果没有手机号，不保存聊天记录（仅使用Redis和MongoDB）
+            console.warn('没有手机号，聊天记录不保存（项目已禁用localStorage）');
+            // 注释掉localStorage相关代码，仅使用Redis和MongoDB
+            // safeSetItem('temp_chatMessages', messagesToSave, STORAGE_EXPIRY_TIME);
           }
         } catch (error) {
           console.error('保存聊天历史失败:', error);

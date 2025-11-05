@@ -1,3 +1,5 @@
+import config from './configLoader';
+
 export interface Message {
   id: string;
   content: string;
@@ -7,21 +9,19 @@ export interface Message {
 
 // Mock API call to simulate responses
 export async function* sendMessageToAPIStream(message: string, userData: any): AsyncGenerator<string> {
-  // Coze API endpoint - updated to v3/chat as per requirements
-  const apiUrl = import.meta.env.VITE_COZE_API_URL;
-  
-  // API authorization token (provided by user)
-  const authToken = import.meta.env.VITE_COZE_AUTH_TOKEN; // 从环境变量读取token
+  // 使用配置加载器获取环境变量
+  const apiUrl = config.cozeApiUrl;
+  const authToken = config.cozeAuthToken;
   
   try {
     // 检查必要参数
     if (!apiUrl || !authToken) {
-      throw new Error('VITE_COZE_API_URL or VITE_COZE_AUTH_TOKEN is not defined');
+      throw new Error('COZE_API_URL or COZE_AUTH_TOKEN is not defined');
     }
     // Prepare request data based on the new API format provided
     const requestData = {
-      bot_id: import.meta.env.VITE_COZE_BOT_ID,
-      workflow_id: import.meta.env.VITE_COZE_WORKFLOW_ID,
+      bot_id: config.cozeBotId,
+      workflow_id: config.cozeWorkflowId,
       user_id: userData.phone, // 使用用户填写的手机号，如果不存在则使用默认值
       stream: true,
       additional_messages: [
@@ -44,7 +44,7 @@ export async function* sendMessageToAPIStream(message: string, userData: any): A
       }
     };
     if(!requestData.bot_id || !requestData.workflow_id) {
-      throw new Error('VITE_COZE_BOT_ID or VITE_COZE_WORKFLOW_ID is not defined');
+      throw new Error('COZE_BOT_ID or COZE_WORKFLOW_ID is not defined');
     }
 
     // Send HTTP POST request to Coze API

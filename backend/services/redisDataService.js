@@ -28,8 +28,8 @@ async function saveUserDataToRedis(phone, userData, expireTime) {
       return false;
     }
 
-    // 只使用手机号作为键，不再创建user相关的其他键
-    const userKey = `user:phone:${phone}`;
+    // 使用users前缀的键名格式，与chats保持一致的命名风格
+    const userKey = `users:${phone}`;
     // 使用提供的过期时间或默认过期时间
     const finalExpireTime = expireTime || EXPIRY_TIME.USER_DATA;
     await redisClient.setAsync(userKey, JSON.stringify(userData));
@@ -60,7 +60,7 @@ async function getUserDataFromRedis(phone, userId) {
 
     // 只通过手机号查询数据
     if (phone) {
-      const userKey = `user:phone:${phone}`;
+      const userKey = `users:${phone}`;
       const userData = await redisClient.getAsync(userKey);
       return userData ? JSON.parse(userData) : null;
     }
@@ -90,13 +90,13 @@ async function saveChatHistoryToRedis(userId, messages, phone = '') {
       return false;
     }
 
-    // 只使用手机号作为key
+    // 只使用手机号作为key，使用chats前缀
     if (!phone) {
       console.error('保存聊天记录需要提供手机号');
       return false;
     }
     
-    const mainKey = `chat:phone:${phone}`;
+    const mainKey = `chats:${phone}`;
     await redisClient.setAsync(mainKey, JSON.stringify(messages));
     await redisClient.expireAsync(mainKey, EXPIRY_TIME.CHAT_HISTORY);
 
@@ -123,9 +123,9 @@ async function getChatHistoryFromRedis(userId = '', phone = '') {
       return [];
     }
 
-    // 只通过手机号查询聊天记录
+    // 只通过手机号查询聊天记录，使用chats前缀
     if (phone) {
-      const phoneKey = `chat:phone:${phone}`;
+      const phoneKey = `chats:${phone}`;
       const cachedMessages = await redisClient.getAsync(phoneKey);
       return cachedMessages ? JSON.parse(cachedMessages) : [];
     }
@@ -155,9 +155,9 @@ async function clearUserRedisCache(userId, phone) {
 
     const keysToDelete = [];
 
-    // 只删除手机号相关的key
+    // 只删除手机号相关的key，使用users前缀
     if (phone) {
-      keysToDelete.push(`user:phone:${phone}`);
+      keysToDelete.push(`users:${phone}`);
     } else {
       console.warn('清除用户缓存需要提供手机号');
       return false;
@@ -188,7 +188,7 @@ async function batchSaveToRedis(dataPairs) {
       return false;
     }
 
-    // 使用pipeline提高性能
+    // 使用pipeline提高性能，设置键使用users前缀
     const pipeline = redisClient.pipeline();
 
     // 添加所有命令到pipeline

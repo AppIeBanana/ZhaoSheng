@@ -24,7 +24,7 @@ export async function saveUserDataMongo(userId: string, userData: any, redisConf
       port: import.meta.env.VITE_REDIS_PORT
     };
 
-    const response = await fetchWithRetry(`${getApiUrl()}/api/user-data`, {
+    const response = await fetchWithRetry(`${getApiUrl()}/api/user-data/saveUserData`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -73,7 +73,7 @@ export async function getUserDataMongo(userId: string, phone: string, redisConfi
     }
 
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
-    const url = `${getApiUrl()}/api/user-data${queryString}`;
+    const url = `${getApiUrl()}/api/user-data/getUserData${queryString}`;
     console.log(`请求URL: ${url}`);
     
     const response = await fetchWithRetry(

@@ -11,6 +11,8 @@ pipeline {
     environment {
         // 生成版本号（基于构建ID和时间戳）
         DOCKER_IMAGE_VERSION = "${BUILD_NUMBER}-${new Date().format('yyyyMMdd-HHmmss')}"
+        // 日志目录配置
+        LOG_DIR = "/app/backend/logs"
     }
     
     // 构建参数，可在Jenkins界面手动触发时修改
@@ -193,7 +195,7 @@ pipeline {
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', passphraseVariable: 'SSH_PASSPHRASE', usernameVariable: 'SSH_USERNAME')]) {
-                        # 使用ssh-agent自动处理密钥passphrase
+                        // 使用ssh-agent自动处理密钥passphrase
                         sh '''
                             # 启动ssh-agent
                             eval $(ssh-agent -s)
@@ -202,33 +204,56 @@ pipeline {
                             echo $SSH_PASSPHRASE | ssh-add $SSH_KEY
                         '''
                         
-                        # 复制Docker镜像
+                        // 复制Docker镜像
                         echo '复制Docker镜像到服务器...'
-                        sh "scp -o StrictHostKeyChecking=no ${DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
+                        sh "scp -o StrictHostKeyChecking=no ${params.DOCKER_IMAGE_NAME}.tar ${params.SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
                         
-                        # 复制必要的配置文件
+                        // 复制必要的配置文件
                         echo '复制配置文件到服务器...'
                         sh "scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
                         sh "scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
                         
-                        # 复制环境变量文件前，确保文件存在
-                        # 重新从凭据加载环境变量文件
+                        // 复制环境变量文件前，确保文件存在
+                        // 重新从凭据加载环境变量文件
                         withCredentials([file(credentialsId: 'zhaosheng-env-file', variable: 'ENV_FILE'),
                                         file(credentialsId: 'zhaosheng-backend-env-file', variable: 'BACKEND_ENV_FILE')]) {
                             sh 'mkdir -p backend'
                             sh 'cp $ENV_FILE .env'
                             sh 'cp $BACKEND_ENV_FILE backend/.env'
                             
-                            # 复制环境变量文件
+                            // 复制环境变量文件
                             echo '复制环境变量文件到服务器...'
                             sh "scp -o StrictHostKeyChecking=no .env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
                             sh "scp -o StrictHostKeyChecking=no backend/.env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/backend"
                         }
                         
-                        # 在部署服务器上加载镜像并启动服务
+                        // 在部署服务器上加载镜像并启动服务
                         echo '在服务器上部署应用...'
                         sh "ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} 'cd ${DEPLOY_PATH} && \
                             echo "开始部署应用..." && \
+                            # 设置日志目录结构和权限（直接在Jenkinsfile中实现）
+                            echo "设置日志目录结构和权限..." && \
+                            # 定义日志根目录（使用Linux标准日志目录）\
+                            LOG_ROOT_DIR="/var/log/zhaosheng" && \
+                            # 创建主日志目录\
+                            echo "创建主日志目录: $LOG_ROOT_DIR" && \
+                            mkdir -p $LOG_ROOT_DIR && \
+                            # 创建子目录（如果需要）\
+                            echo "创建子目录结构..." && \
+                            mkdir -p $LOG_ROOT_DIR/system && \
+                            mkdir -p $LOG_ROOT_DIR/mongodb && \
+                            mkdir -p $LOG_ROOT_DIR/redis && \
+                            # 设置目录权限（确保Node.js进程可以写入）\
+                            echo "设置目录权限..." && \
+                            # 假设Docker容器内运行的用户UID是1000\
+                            chown -R 1000:1000 $LOG_ROOT_DIR && \
+                            chmod -R 755 $LOG_ROOT_DIR && \
+                            # 设置日志文件默认权限\
+                            find $LOG_ROOT_DIR -type f -exec chmod 644 {} \; && \
+                            # 检查设置结果\
+                            echo "检查日志目录设置..." && \
+                            ls -la $LOG_ROOT_DIR && \
+                            echo "日志目录设置完成！" && \
                             # 停止并移除旧容器 && \
                             echo "停止并移除旧容器..." && \
                             docker-compose down || true && \
@@ -295,10 +320,8 @@ pipeline {
         // 构建成功时
         success {
             echo "构建和部署成功！"
-            echo "应用已成功部署到 http://${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
-            // 可以添加通知，例如发送邮件或Slack消息
+            echo "应用已成功部署！"
         }
-        
         // 构建失败时
         failure {
             echo '构建或部署失败！'

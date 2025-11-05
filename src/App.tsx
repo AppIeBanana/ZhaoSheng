@@ -5,6 +5,10 @@ import QAPage from './pages/QAPage';
 import { Empty } from './components/Empty';
 import { UserProvider, useUserData } from './contexts/userContext';
 import { toast } from 'sonner';
+import config from './lib/configLoader';
+
+// 设置应用标题
+document.title = config.appTitle;
 
 // 严格检查用户是否已完成信息收集
 const hasCompletedInfoCollection = (userData: any): boolean => {

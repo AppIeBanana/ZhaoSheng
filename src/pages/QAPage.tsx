@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import MessageItem from "../components/MessageItem";
 import ChatInput from "../components/ChatInput";
 import PredefinedQuestions from "../components/PredefinedQuestions";
+import Header from "../components/Header";
 import useChatHistory from "../hooks/useChatHistory";
 import { setCurrentPhone } from "@/lib/storageService";
 
@@ -111,31 +112,11 @@ export default function QAPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-blue-50 overflow-x-hidden">
-      {/* Header with school branding */}
-      <header className="bg-white shadow-sm py-2.5 px-4 border-b sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => navigate("/")}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <i className="fa-solid fa-arrow-left text-gray-600"></i>
-          </button>
-          <div className="text-center">
-            <h1 className="text-sm font-medium text-gray-500">智能问答系统</h1>
-            <div className="flex items-center justify-center mt-1">
-              <span className="text-blue-600 font-semibold">
-                福州软件职业技术学院AI招生
-              </span>
-              {/* <i className="fa-solid fa-home ml-2 text-gray-400"></i> */}
-          {/* <i className="fa-solid fa-bars ml-3 text-gray-400"></i> */}
-            </div>
-          </div>
-          <div className="w-8"></div> {/* Placeholder for alignment */}
-        </div>
-      </header>
+      {/* 使用通用Header组件 */}
+      <Header showBackButton={true} />
 
       {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto pb-40">
+        <div className="flex-1 overflow-y-auto pt-4 pb-40">
           {/* 猜你想问部分 - 使用组件 */}
           <PredefinedQuestions onQuestionSelect={handlePredefinedQuestion} />
 

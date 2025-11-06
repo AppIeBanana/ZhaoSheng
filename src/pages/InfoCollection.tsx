@@ -6,6 +6,7 @@ import { provinces } from '@/data/provinces.ts';
 import { ethnicities } from '@/data/ethnicities.ts';
 import { getUserData, getStoredPhone, setCurrentPhone } from '@/lib/storageService';
 import SearchableDropdown from '@/components/SearchableDropdown';
+import Header from '@/components/Header';
 import { validateStudentForm, StudentFormData, ValidationErrors } from '@/lib/formValidators';
 import { EXAM_TYPES, USER_TYPES, FORM_FIELDS, INITIAL_FORM_DATA, SUBMIT_STATUS } from '@/lib/formConstants';
 
@@ -138,15 +139,10 @@ export default function InfoCollection() {
   };
   
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white px-4 py-8">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <div className="w-15% h-15% max-w-32 max-h-32 mx-auto mb-4">
-          <img src="/imgs/校徽.png" alt="福州软件职业技术学院校徽" className="w-full h-full object-contain" />
-        </div>
-        <h1 className="text-[clamp(1.5rem,5vw,2rem)] font-bold text-gray-800 mb-2">福软招生智能问答系统</h1>
-        <p className="text-gray-600">请填写下面各项信息，方便我们为您提供个性化解答</p>
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+      {/* 使用通用Header组件 */}
+      <Header showBackButton={false} />
+      <div className="px-4 pt-24 pb-8">
       
       {/* Form Card */}
       <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 transform transition-all duration-300 hover:shadow-xl">
@@ -287,6 +283,7 @@ export default function InfoCollection() {
       <div className="text-center text-xs text-gray-500">
         <p>本系统信息仅供参考,具体以学校官方发布为准</p>
         <p className="text-xs whitespace-pre-line">如有疑问,请联系招生热线：0591-83843292 或 18905009495(微信同号)</p>
+      </div>
       </div>
     </div>
   );

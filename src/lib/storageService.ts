@@ -1,6 +1,7 @@
 // 统一存储服务 - 整合MongoDB和Redis
 import * as mongodbService from './storage/mongodb';
 import * as redisService from './storage/redis';
+import config from './configLoader';
 
 // 存储策略常量
 export const STORAGE_STRATEGIES = {
@@ -27,8 +28,8 @@ export async function saveUserData(userData: any): Promise<boolean> {
     
     // 添加Redis配置（包含连接信息和1小时过期时间）
     const redisConfig = {
-      host: import.meta.env.VITE_REDIS_HOST || 'localhost',
-      port: import.meta.env.VITE_REDIS_PORT || 6379,
+      host: config.redisHost || 'localhost',
+      port: config.redisPort || 6379,
       expireTime: 3600 // 1小时过期时间（秒）
     };
     

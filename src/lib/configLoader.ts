@@ -1,62 +1,104 @@
 // 前端环境配置加载器
-// 根据NODE_ENV自动加载对应的环境变量配置
+// 直接定义环境配置，不依赖.env文件
 
-// 获取当前环境
-const currentEnv = import.meta.env.NODE_ENV || 'development';
+// 获取当前环境（如果没有设置，默认为production）
+const currentEnv = import.meta.env.MODE || import.meta.env.NODE_ENV || 'production';
 
-// 统一环境变量配置（不区分环境的变量）
-const commonConfig = {
+// 生产环境配置（从.env文件获取的值）
+const productionConfig = {
   // 前端应用配置
-  appTitle: import.meta.env.VITE_APP_TITLE || '招生智能问答',
+  appTitle: '福软招生智能问答',
   
-  // Coze API配置
-  cozeAuthToken: import.meta.env.VITE_COZE_AUTH_TOKEN,
-  cozeApiUrl: import.meta.env.VITE_COZE_API_URL,
-  cozeBotId: import.meta.env.VITE_COZE_BOT_ID,
-  cozeWorkflowId: import.meta.env.VITE_COZE_WORKFLOW_ID
-};
-
-// 开发环境配置
-const devConfig = {
-  ...commonConfig,
   // 后端API配置
-  backendApiUrl: import.meta.env.VITE_DEV_BACKEND_API_URL,
+  backendApiUrl: 'https://zswd.fzrjxy.com:4431',
   
   // Redis配置
-  redisHost: import.meta.env.VITE_DEV_REDIS_HOST,
-  redisPort: import.meta.env.VITE_DEV_REDIS_PORT,
-  redisPassword: import.meta.env.VITE_DEV_REDIS_PASSWORD,
+  redisHost: '10.26.1.20',
+  redisPort: 6379,
+  redisPassword: 'plk741023',
   
-  // 环境标识
-  isDevelopment: true,
-  isProduction: false
-};
-
-// 生产环境配置
-const prodConfig = {
-  ...commonConfig,
-  // 后端API配置
-  backendApiUrl: import.meta.env.VITE_PROD_BACKEND_API_URL,
-  
-  // Redis配置
-  redisHost: import.meta.env.VITE_PROD_REDIS_HOST,
-  redisPort: import.meta.env.VITE_PROD_REDIS_PORT,
-  redisPassword: import.meta.env.VITE_PROD_REDIS_PASSWORD,
+  // Coze API配置（使用默认值）
+  cozeAuthToken: 'sat_7Qnr3CY75R4HT1RJcLi0h4hS35aurFuT0Ow4uAAna9OAyfHzpQnnRlZ9kNT3qMZI',
+  cozeApiUrl: 'https://api.coze.cn/v3/chat',
+  cozeBotId: '7553550342269550632',
+  cozeWorkflowId: '7553548989958930470',
   
   // 服务器配置
-  port: import.meta.env.VITE_PROD_PORT,
+  port: 4431,
   
-  // SSL配置
-  sslCertPath: import.meta.env.VITE_PROD_SSL_CERT_PATH,
-  sslKeyPath: import.meta.env.VITE_PROD_SSL_KEY_PATH,
+  // SSL证书路径（生产环境）
+  sslCertPath: '/etc/letsencrypt/live/zswd.fzrjxy.com/fullchain.pem',
+  sslKeyPath: '/etc/letsencrypt/live/zswd.fzrjxy.com/privkey.pem',
   
   // 环境标识
   isDevelopment: false,
   isProduction: true
 };
 
+// 开发环境配置（从.env文件获取的值）
+const developmentConfig = {
+  // 前端应用配置
+  appTitle: '福软招生智能问答',
+  
+  // 后端API配置
+  backendApiUrl: 'http://localhost:3001',
+  
+  // Redis配置
+  redisHost: '172.21.9.233',
+  redisPort: 6379,
+  redisPassword: 'redisadmin',
+  
+  // Coze API配置（使用默认值）
+  cozeAuthToken: 'sat_7Qnr3CY75R4HT1RJcLi0h4hS35aurFuT0Ow4uAAna9OAyfHzpQnnRlZ9kNT3qMZI',
+  cozeApiUrl: 'https://api.coze.cn/v3/chat',
+  cozeBotId: '7553550342269550632',
+  cozeWorkflowId: '7553548989958930470',
+  
+  // 服务器配置
+  port: 3001,
+  
+  // 环境标识
+  isDevelopment: true,
+  isProduction: false
+};
+
 // 根据当前环境选择配置
-const config = currentEnv === 'production' ? prodConfig : devConfig;
+let config = currentEnv === 'production' ? productionConfig : developmentConfig;
+
+// 允许环境变量覆盖默认配置
+config = {
+  ...config,
+  // 后端API配置覆盖
+  backendApiUrl: import.meta.env.VITE_BACKEND_API_URL || 
+                import.meta.env.VITE_PROD_BACKEND_API_URL || 
+                import.meta.env.VITE_DEV_BACKEND_API_URL || 
+                config.backendApiUrl,
+  // 应用标题覆盖
+  appTitle: import.meta.env.VITE_APP_TITLE || config.appTitle,
+  // Redis配置覆盖
+  redisHost: import.meta.env.VITE_REDIS_HOST || 
+            import.meta.env.VITE_PROD_REDIS_HOST || 
+            import.meta.env.VITE_DEV_REDIS_HOST || 
+            config.redisHost,
+  redisPort: import.meta.env.VITE_REDIS_PORT || 
+             import.meta.env.VITE_PROD_REDIS_PORT || 
+             import.meta.env.VITE_DEV_REDIS_PORT || 
+             config.redisPort,
+  redisPassword: import.meta.env.VITE_REDIS_PASSWORD || 
+                 import.meta.env.VITE_PROD_REDIS_PASSWORD || 
+                 import.meta.env.VITE_DEV_REDIS_PASSWORD || 
+                 config.redisPassword,
+  // Coze API配置覆盖
+  cozeAuthToken: import.meta.env.VITE_COZE_AUTH_TOKEN || config.cozeAuthToken,
+  cozeApiUrl: import.meta.env.VITE_COZE_API_URL || config.cozeApiUrl,
+  cozeBotId: import.meta.env.VITE_COZE_BOT_ID || config.cozeBotId,
+  cozeWorkflowId: import.meta.env.VITE_COZE_WORKFLOW_ID || config.cozeWorkflowId,
+  // 端口配置覆盖
+  port: import.meta.env.VITE_PORT || 
+        import.meta.env.VITE_PROD_PORT || 
+        import.meta.env.VITE_DEV_PORT || 
+        config.port
+};
 
 // 导出配置
 console.log(`环境配置已加载: ${currentEnv}`);

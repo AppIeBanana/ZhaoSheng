@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import config from './configLoader';
 
 // 60分钟过期时间（毫秒）- 仅用于历史兼容性，项目现在只使用Redis和MongoDB
 export const STORAGE_EXPIRY_TIME = 60 * 60 * 1000;
@@ -235,12 +236,8 @@ export async function fetchWithRetry(url: string, options: RequestInit, retries 
  * 获取后端API基础URL
  */
 export function getBackendApiUrl(): string {
-  // 根据环境使用正确的API URL配置
-  const currentEnv = import.meta.env.NODE_ENV || 'development';
-  if (currentEnv === 'production') {
-    return import.meta.env.VITE_PROD_BACKEND_API_URL;
-  }
-  return import.meta.env.VITE_DEV_BACKEND_API_URL;
+  // 从配置加载器获取后端API URL
+  return config.backendApiUrl;
 }
 
 export function cn(...inputs: ClassValue[]) {

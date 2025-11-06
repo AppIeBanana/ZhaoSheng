@@ -1,5 +1,6 @@
 // MongoDB数据存储模块，用于与后端MongoDB交互
 import { fetchWithRetry } from '../utils';
+import config from '../configLoader';
 
 /**
  * 使用相对路径API URL，通过Nginx代理避免CORS问题
@@ -20,8 +21,8 @@ export async function saveUserDataMongo(userId: string, userData: any, redisConf
     }
 
     const redisConfigToUse = redisConfig || {
-      host: import.meta.env.VITE_REDIS_HOST,
-      port: import.meta.env.VITE_REDIS_PORT
+      host: config.redisHost,
+      port: config.redisPort
     };
 
     const response = await fetchWithRetry(`${getApiUrl()}/api/user-data/saveUserData`, {
@@ -187,8 +188,8 @@ export async function getChatHistoryMongo(phone: string): Promise<any[]> {
 export async function clearStudentCacheMongo(userId: string, redisConfig?: { host: string; port: number }): Promise<boolean> {
   try {
     const redisConfigToUse = redisConfig || {
-      host: import.meta.env.VITE_REDIS_HOST || '',
-      port: import.meta.env.VITE_REDIS_PORT || ''
+      host: config.redisHost || '',
+      port: config.redisPort || ''
     };
 
     const response = await fetchWithRetry(`${getApiUrl()}/api/student-data/${userId}`, {

@@ -14,10 +14,11 @@ const LOG_LEVELS = {
 class Logger {
   constructor(logType = 'system') {
     this.logType = logType; // system, mongodb, redis
-    // 优先使用环境变量配置的日志路径，否则使用默认路径
+    // 优先从配置文件加载日志路径，否则使用默认路径
     // 在生产环境中，可以通过Jenkins设置环境变量LOG_DIR为标准日志目录
     // 例如：Linux系统通常设置为 /var/log/your-app/
-    this.logDir = process.env.LOG_DIR || path.join(__dirname, '../logs');
+    const config = require('../config/configLoader').default;
+    this.logDir = config.LOG_DIR || path.join(__dirname, '../logs');
     this.ensureLogDirExists();
   }
 

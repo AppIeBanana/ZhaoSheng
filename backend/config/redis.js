@@ -128,27 +128,53 @@ async function reconnectRedis(host, port, password = null) {
       }
     }
     
-    // 临时保存环境变量原值
-    const originalHost = process.env.REDIS_HOST;
-    const originalPort = process.env.REDIS_PORT;
-    const originalPassword = process.env.REDIS_PASSWORD;
+    // 创建临时配置对象
+    const tempConfig = {
+      host: host || getRedisConfig().host,
+      port: port ? parseInt(port, 10) : getRedisConfig().port,
+      password: password || getRedisConfig().password
+    };
     
-    // 设置新的环境变量
-    if (host) process.env.REDIS_HOST = host;
-    if (port) process.env.REDIS_PORT = port;
-    if (password) process.env.REDIS_PASSWORD = password;
+    // 直接使用临时配置创建新的Redis客户端
+    redisLogger.info(`重新初始化Redis连接: ${tempConfig.host}:${tempConfig.port}`);
+    console.log(`重新初始化Redis连接: ${tempConfig.host}:${tempConfig.port}`);
     
-    // 重新初始化
-    const result = await initializeRedis();
+    redisClient = redis.createClient({
+      url: tempConfig.password 
+        ? `redis://:${encodeURIComponent(tempConfig.password)}@${tempConfig.host}:${tempConfig.port}` 
+        : `redis://${tempConfig.host}:${tempConfig.port}`,
+      password: tempConfig.password,
+      db: 0,
+      socket: {
+        reconnectStrategy: (retries) => {
+          const delay = Math.min(retries * 100, 3000);
+          redisLogger.warn(`Redis尝试第 ${retries} 次重连，延迟 ${delay}ms`);
+          console.log(`Redis尝试第 ${retries} 次重连，延迟 ${delay}ms`);
+          return delay;
+        },
+        connectTimeout: 10000
+      }
+    });
     
-    // 恢复环境变量原值（可选，取决于需求）
-    // if (originalHost) process.env.REDIS_HOST = originalHost;
-    // if (originalPort) process.env.REDIS_PORT = originalPort;
-    // if (originalPassword) process.env.REDIS_PASSWORD = originalPassword;
+    // 重新绑定事件处理器
+    redisClient.on('connect', () => {
+      redisLogger.info('Redis客户端已连接');
+      console.log('Redis客户端已连接');
+    });
     
-    return result;
+    redisClient.on('error', (err) => {
+      redisLogger.error('Redis连接错误:', { error: err.message, stack: err.stack });
+      console.error('Redis连接错误:', err);
+    });
+    
+    // 尝试连接
+    await redisClient.connect();
+    redisLogger.info('Redis重新连接成功');
+    console.log('Redis重新连接成功');
+    return true;
   } catch (error) {
     console.error('Redis重新连接失败:', error);
+    redisLogger.error('Redis重新连接失败:', { error: error.message, stack: error.stack });
     return false;
   }
 }

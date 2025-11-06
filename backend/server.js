@@ -11,15 +11,21 @@ const { systemLogger } = require('./utils/logger');
 // 加载环境变量
 dotenv.config();
 
-// 引入配置加载器
+// 环境配置
 const config = require('./config/configLoader').default;
 const { NODE_ENV } = require('./config/configLoader');
+
+// 确保配置中包含SSL路径
+if (!config.SSL_KEY_PATH && NODE_ENV === 'production') {
+  config.SSL_KEY_PATH = '/etc/letsencrypt/live/zswd.fzrjxy.com/privkey.pem';
+  config.SSL_CERT_PATH = '/etc/letsencrypt/live/zswd.fzrjxy.com/fullchain.pem';
+}
 
 // 初始化应用
 const app = express();
 
 // 引入数据库连接模块
-const { connectMongoDB } = require('./config/database');
+const { connectMongoDB } = require('./config/mongodb');
 
 // 引入Redis连接模块
 const { ensureConnection } = require('./config/redis');
@@ -39,7 +45,7 @@ const corsOptions = {
 };
 
 // 根据环境设置不同的CORS源
-if (NODE_ENV === 'development') {
+if (NODE_ENV === 'production') {
   corsOptions.origin = [
     'http://localhost:3000',
     'http://192.168.5.3:3000' // 局域网IP地址
@@ -88,8 +94,8 @@ async function startServer() {
     // 根据端口决定是否使用HTTPS
     if (PORT === 443 || PORT === 4431) {
       // HTTPS配置
-      const privateKey = fs.readFileSync(process.env.VITE_SSL_KEY_PATH || './ssl/private.key', 'utf8');
-      const certificate = fs.readFileSync(process.env.VITE_SSL_CERT_PATH || './ssl/certificate.crt', 'utf8');
+      const privateKey = fs.readFileSync(config.SSL_KEY_PATH || './ssl/private.key', 'utf8');
+      const certificate = fs.readFileSync(config.SSL_CERT_PATH || './ssl/certificate.crt', 'utf8');
       const credentials = { key: privateKey, cert: certificate };
 
       const httpsServer = https.createServer(credentials, app);

@@ -292,10 +292,10 @@ pipeline {
                                         # 简化验证 - 仅显示容器状态 && \
                                         echo "部署完成，容器状态：" && \
                                         docker ps -f "name=$DOCKER_CONTAINER_NAME" || echo "容器状态检查跳过"
-                                    '''
                                     
                                     # 完成后关闭ssh-agent
                                     ssh-agent -k
+                                    '''
                                 ''',
                                 env: [
                                     "SSH_KEY=${SSH_KEY}",

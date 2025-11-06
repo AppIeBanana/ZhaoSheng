@@ -93,8 +93,8 @@ export default function ChatInput({
         
         {/* 按钮容器 */}
         <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-2">
-          {/* 文件上传按钮 */}
-          <button
+          {/* 文件上传按钮 - 已注释 */}
+          {/* <button
             className="text-gray-400 hover:text-blue-600 transition-colors p-1"
             disabled={isLoading}
             onClick={handleFileUploadClick}
@@ -104,17 +104,17 @@ export default function ChatInput({
             <i className="fa-solid fa-file"></i>
           </button>
 
-          {/* 隐藏的文件输入 */}
-          <input
+          {/* 隐藏的文件输入 - 已注释 */}
+          {/* <input
             ref={fileInputRef}
             type="file"
             className="hidden"
             onChange={handleFileChange}
             disabled={isLoading}
-          />
+          /> */}
 
-          {/* 语音输入按钮 */}
-          <button
+          {/* 语音输入按钮 - 已注释 */}
+          {/* <button
             className={`p-1 transition-colors ${isRecording ? 'text-red-500' : 'text-gray-400 hover:text-blue-600'}`}
             disabled={isLoading}
             onClick={handleVoiceClick}
@@ -126,7 +126,7 @@ export default function ChatInput({
             ) : (
               <i className="fa-solid fa-microphone"></i>
             )}
-          </button>
+          </button> */}
 
           {/* 发送按钮 */}
           <button

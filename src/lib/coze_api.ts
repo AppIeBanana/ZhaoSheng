@@ -37,10 +37,10 @@ export async function* sendMessageToAPIStream(message: string, userData: any): A
         // CONVERSATION_NAME: "talk",
         // USER_INPUT: message,
         exam_type: userData.examType ,
-    ethnicity: userData.ethnicity,
-    province: userData.province,
-    score: userData.score,
-    user_type: userData.userType
+        ethnicity: userData.ethnicity,
+        province: userData.province,
+        score: userData.score,
+        user_type: userData.userType
       }
     };
     if(!requestData.bot_id || !requestData.workflow_id) {

@@ -36,13 +36,13 @@ pipeline {
                 sh 'mkdir -p backend'
                 
                 // 加载根目录.env文件
-                withCredentials([file(credentialsId: 'zhaosheng-env-file', variable: 'ENV_FILE')]) {
+                withCredentials([file(credentialsId: 'zhaosheng_env', variable: 'ENV_FILE')]) {
                     sh 'cp $ENV_FILE .env'
                     echo '根目录.env文件已从凭据加载'
                 }
                 
                 // 加载backend目录.env文件
-                withCredentials([file(credentialsId: 'zhaosheng-backend-env-file', variable: 'BACKEND_ENV_FILE')]) {
+                withCredentials([file(credentialsId: 'zhaosheng_backend_env', variable: 'BACKEND_ENV_FILE')]) {
                     sh 'cp $BACKEND_ENV_FILE backend/.env'
                     echo 'backend/.env文件已从凭据加载'
                 }
@@ -114,7 +114,7 @@ pipeline {
             steps {
                 script {
                     echo '构建项目...'
-            withCredentials([file(credentialsId: 'zhaosheng-env-file', variable: 'ENV_FILE')]) {
+            withCredentials([file(credentialsId: 'zhaosheng_env', variable: 'ENV_FILE')]) {
                 sh 'cp $ENV_FILE .env'
             }
             sh 'pnpm run build'
@@ -215,8 +215,8 @@ pipeline {
                         
                         // 复制环境变量文件前，确保文件存在
                         // 重新从凭据加载环境变量文件
-                        withCredentials([file(credentialsId: 'zhaosheng-env-file', variable: 'ENV_FILE'),
-                                        file(credentialsId: 'zhaosheng-backend-env-file', variable: 'BACKEND_ENV_FILE')]) {
+                        withCredentials([file(credentialsId: 'zhaosheng_env', variable: 'ENV_FILE'),
+                                        file(credentialsId: 'zhaosheng_backend_env', variable: 'BACKEND_ENV_FILE')]) {
                             sh 'mkdir -p backend'
                             sh 'cp $ENV_FILE .env'
                             sh 'cp $BACKEND_ENV_FILE backend/.env'

@@ -235,7 +235,7 @@ pipeline {
                                         chown -R 1000:1000 $LOG_ROOT_DIR && \
                                         chmod -R 755 $LOG_ROOT_DIR && \
                                         # 设置日志文件默认权限 && \
-                                        find $LOG_ROOT_DIR -type f -exec chmod 644 {} \\\; && \
+                                        find $LOG_ROOT_DIR -type f -exec chmod 644 {} \; && \
                                         # 检查设置结果 && \
                                         echo "检查日志目录设置..." && \
                                         ls -la $LOG_ROOT_DIR && \

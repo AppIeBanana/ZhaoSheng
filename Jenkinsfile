@@ -296,7 +296,6 @@ pipeline {
                                     # 完成后关闭ssh-agent
                                     ssh-agent -k
                                     '''
-                                ''',
                                 env: [
                                     "SSH_KEY=${SSH_KEY}",
                                     "SSH_PASSPHRASE=${SSH_PASSPHRASE}",

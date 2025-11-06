@@ -12,8 +12,7 @@ const { systemLogger } = require('./utils/logger');
 dotenv.config();
 
 // 环境配置
-const config = require('./config/configLoader').default;
-const { NODE_ENV } = require('./config/configLoader');
+const { config, NODE_ENV } = require('./config/configLoader');
 
 // 确保配置中包含SSL路径
 if (!config.SSL_KEY_PATH && NODE_ENV === 'production') {
@@ -45,7 +44,7 @@ const corsOptions = {
 };
 
 // 根据环境设置不同的CORS源
-if (NODE_ENV === 'production') {
+if (NODE_ENV === 'development') {
   corsOptions.origin = [
     'http://localhost:3000',
     'http://192.168.5.3:3000' // 局域网IP地址
@@ -66,7 +65,6 @@ app.use(express.json());
 app.use((req, _, next) => {
   const logMessage = `[${new Date().toISOString()}] ${req.method} ${req.path}`;
   systemLogger.info(logMessage, { ip: req.ip, method: req.method, path: req.path });
-  console.log(logMessage);
   next();
 });
 
@@ -89,7 +87,6 @@ async function startServer() {
     
     // 记录环境信息
     systemLogger.info(`服务器启动 - 环境: ${NODE_ENV}, 端口: ${PORT}`);
-    console.log(`服务器启动 - 环境: ${NODE_ENV}, 端口: ${PORT}`);
     
     // 根据端口决定是否使用HTTPS
     if (PORT === 443 || PORT === 4431) {

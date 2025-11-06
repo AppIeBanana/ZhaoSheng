@@ -1,7 +1,7 @@
 // MongoDB数据库连接配置
 const mongoose = require('mongoose');
 const { mongodbLogger } = require('../utils/logger');
-const config = require('./configLoader').default;
+const config = require('./configLoader');
 let mongooseConnection;
 
 /**
@@ -40,7 +40,6 @@ async function connectMongoDB() {
     });
     
     mongodbLogger.info('MongoDB连接成功');
-  console.log('MongoDB连接成功');
     
     // 尝试删除不需要的username索引以避免重复键错误
     try {
@@ -53,21 +52,17 @@ async function connectMongoDB() {
         
         if (hasUsernameIndex) {
           mongodbLogger.info('检测到username索引，尝试删除...');
-      console.log('检测到username索引，尝试删除...');
           await UserModel.collection.dropIndex('username_1');
           mongodbLogger.info('username索引已删除');
-      console.log('username索引已删除');
         }
       }
     } catch (indexError) {
       mongodbLogger.warn(`删除username索引时出错（可能索引不存在）: ${indexError.message}`);
-      console.log(`删除username索引时出错（可能索引不存在）: ${indexError.message}`);
     }
     
     return true;
   } catch (error) {
     mongodbLogger.error('MongoDB连接失败:', { error: error.message, stack: error.stack });
-    console.error('MongoDB连接失败:', error.message);
     return false;
   }
 }

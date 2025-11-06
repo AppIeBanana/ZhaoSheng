@@ -5,10 +5,10 @@ const { redisLogger } = require('../utils/logger');
 
 // 获取Redis配置
 function getRedisConfig() {
-  const config = require('./configLoader').default;
+  const config = require('./configLoader');
   
   return {
-    host: config.REDIS_HOST ,
+    host: config.REDIS_HOST,
     port: parseInt(config.REDIS_PORT, 10),
     password: config.REDIS_PASSWORD
   };
@@ -23,7 +23,6 @@ async function initializeRedis() {
     const config = getRedisConfig();
     
     redisLogger.info(`初始化Redis连接: ${config.host}:${config.port}`);
-    console.log(`初始化Redis连接: ${config.host}:${config.port}`);
     
     // 创建新的Redis客户端
     redisClient = redis.createClient({
@@ -36,7 +35,6 @@ async function initializeRedis() {
         reconnectStrategy: (retries) => {
           const delay = Math.min(retries * 100, 3000);
           redisLogger.warn(`Redis尝试第 ${retries} 次重连，延迟 ${delay}ms`);
-          console.log(`Redis尝试第 ${retries} 次重连，延迟 ${delay}ms`);
           return delay;
         },
         connectTimeout: 10000
@@ -46,22 +44,18 @@ async function initializeRedis() {
     // 连接事件处理
     redisClient.on('connect', () => {
       redisLogger.info('Redis客户端已连接');
-      console.log('Redis客户端已连接');
     });
     
     redisClient.on('error', (err) => {
       redisLogger.error('Redis连接错误:', { error: err.message, stack: err.stack });
-      console.error('Redis连接错误:', err);
     });
     
     redisClient.on('end', () => {
       redisLogger.info('Redis连接已关闭');
-      console.log('Redis连接已关闭');
     });
     
     redisClient.on('reconnecting', (info) => {
       redisLogger.warn(`Redis重新连接中，延迟: ${info.delay}ms, 尝试次数: ${info.attempt}`);
-      console.log(`Redis重新连接中，延迟: ${info.delay}ms, 尝试次数: ${info.attempt}`);
     });
     
     // 转换Promise方法 - 使用更安全的方式
@@ -82,11 +76,9 @@ async function initializeRedis() {
     // 尝试连接
     await redisClient.connect();
     redisLogger.info('Redis初始化连接成功');
-    console.log('Redis初始化连接成功');
     return true;
   } catch (error) {
     redisLogger.error('Redis初始化失败:', { error: error.message, stack: error.stack });
-    console.error('Redis初始化失败:', error);
     return false;
   }
 }
@@ -96,7 +88,6 @@ async function ensureConnection() {
   try {
     if (!redisClient || !redisClient.isOpen) {
       redisLogger.info('Redis连接不可用，尝试初始化...');
-      console.log('Redis连接不可用，尝试初始化...');
       return await initializeRedis();
     }
     

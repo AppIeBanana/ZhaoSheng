@@ -1,6 +1,7 @@
 // Redis存储实现 - 与后端API交互
 import { getBackendApiUrl } from '../utils';
 import { fetchWithRetry } from '../utils';
+import config from '../configLoader';
 
 /**
  * 获取后端API基础URL
@@ -29,8 +30,8 @@ export async function saveUserDataRedis(userId: string, userData: any): Promise<
         userId,
         userData,
         redisConfig: {
-          host: import.meta.env.VITE_REDIS_HOST,
-          port: import.meta.env.VITE_REDIS_PORT
+          host: config.redisHost,
+          port: config.redisPort
         }
       }),
       credentials: 'include'
@@ -119,8 +120,8 @@ export async function clearRedisCache(userId: string): Promise<boolean> {
       },
       body: JSON.stringify({
         redisConfig: {
-          host: import.meta.env.VITE_REDIS_HOST || '',
-          port: import.meta.env.VITE_REDIS_PORT || ''
+          host: config.redisHost || '',
+          port: config.redisPort || ''
         }
       })
     });

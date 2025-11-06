@@ -229,28 +229,28 @@ pipeline {
                         
                         // 在部署服务器上加载镜像并启动服务
                         echo '在服务器上部署应用...'
-                        sh "ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} 'cd ${DEPLOY_PATH} && \
+                        sh """ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} 'cd ${DEPLOY_PATH} && \
                             echo '开始部署应用...' && \
-                            # 设置日志目录结构和权限（直接在Jenkinsfile中实现）
+                            # 设置日志目录结构和权限（直接在Jenkinsfile中实现） && \
                             echo '设置日志目录结构和权限...' && \
-                            # 定义日志根目录（使用Linux标准日志目录）\
+                            # 定义日志根目录（使用Linux标准日志目录） && \
                             LOG_ROOT_DIR="/var/log/zhaosheng" && \
-                            # 创建主日志目录\
+                            # 创建主日志目录 && \
                             echo '创建主日志目录: $LOG_ROOT_DIR' && \
                             mkdir -p $LOG_ROOT_DIR && \
-                            # 创建子目录（如果需要）\
+                            # 创建子目录（如果需要） && \
                             echo '创建子目录结构...' && \
                             mkdir -p $LOG_ROOT_DIR/system && \
                             mkdir -p $LOG_ROOT_DIR/mongodb && \
                             mkdir -p $LOG_ROOT_DIR/redis && \
-                            # 设置目录权限（确保Node.js进程可以写入）\
+                            # 设置目录权限（确保Node.js进程可以写入） && \
                             echo '设置目录权限...' && \
-                            # 假设Docker容器内运行的用户UID是1000\
+                            # 假设Docker容器内运行的用户UID是1000 && \
                             chown -R 1000:1000 $LOG_ROOT_DIR && \
                             chmod -R 755 $LOG_ROOT_DIR && \
-                            # 设置日志文件默认权限\
+                            # 设置日志文件默认权限 && \
                             find $LOG_ROOT_DIR -type f -exec chmod 644 {} \; && \
-                            # 检查设置结果\
+                            # 检查设置结果 && \
                             echo '检查日志目录设置...' && \
                             ls -la $LOG_ROOT_DIR && \
                             echo '日志目录设置完成！' && \
@@ -277,10 +277,10 @@ pipeline {
                             # 加载Nginx基础镜像（适配指定域名的镜像） && \
                             if [ -f "${DEPLOY_PATH}/nginx-stable-perl.tar" ]; then \
                                 echo '发现本地Nginx基础镜像文件，正在加载...' && \
-                                docker load -i "${DEPLOY_PATH}/nginx-stable-perl.tar" || echo 'Nginx基础镜像加载失败，将继续部署' && \  
+                                docker load -i "${DEPLOY_PATH}/nginx-stable-perl.tar" || echo 'Nginx基础镜像加载失败，将继续部署' && \
                                 # 为加载的镜像添加指定域名的标签，确保与Dockerfile一致 && \
                                 if docker images | grep -q "nginx:stable-perl" || docker images | grep -q "library/nginx:stable-perl"; then \
-                                    echo '为Nginx镜像添加指定域名标签...' && \  
+                                    echo '为Nginx镜像添加指定域名标签...' && \
                                     # 处理两种可能的镜像名称格式 && \
                                     docker tag nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || \
                                     docker tag library/nginx:stable-perl i0qlp8mg3an5h2.xuanyuan.run/library/nginx:stable-perl 2>/dev/null || \
@@ -305,7 +305,7 @@ pipeline {
                             docker system prune -f && \
                             # 简化验证 - 仅显示容器状态 && \
                             echo '部署完成，容器状态：' && \
-                            docker ps -f "name=${DOCKER_CONTAINER_NAME}" || echo '容器状态检查跳过'"
+                            docker ps -f "name=${DOCKER_CONTAINER_NAME}" || echo '容器状态检查跳过'"""
                     }
                     
                     // 清理本地临时文件

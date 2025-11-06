@@ -59,7 +59,7 @@ export async function getUserDataRedis(userId: string, phone: string): Promise<a
       console.log('未提供手机号，跳过Redis数据获取');
       return null;
     }
-
+    console.log(`Redis配置: host=${config.redisHost}, port=${config.redisPort}`);
     console.log(`准备从Redis获取用户数据: userId=${userId}, phone=${phone}`);
     
     // 通过API从Redis缓存获取数据，使用查询参数传递userId

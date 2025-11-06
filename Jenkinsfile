@@ -182,23 +182,21 @@ pipeline {
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', passphraseVariable: 'SSH_PASSPHRASE', usernameVariable: 'SSH_USERNAME')]) {
-                        // 使用ssh-agent自动处理密钥passphrase
+                        // 所有SSH相关操作在同一个shell会话中执行，确保ssh-agent环境变量可用
                         sh '''
                             # 启动ssh-agent
                             eval $(ssh-agent -s)
                             
                             # 添加私钥到ssh-agent，使用SSH_PASSPHRASE环境变量提供密码
                             echo $SSH_PASSPHRASE | ssh-add $SSH_KEY
+                            
+                            echo '复制Docker镜像到服务器...'
+                            scp -o StrictHostKeyChecking=no ${params.DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}
+                            
+                            echo '复制配置文件到服务器...'
+                            scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}
+                            scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}
                         '''
-                        
-                        // 复制Docker镜像
-                        echo '复制Docker镜像到服务器...'
-                        sh "scp -o StrictHostKeyChecking=no ${params.DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
-                        
-                        // 复制必要的配置文件
-                        echo '复制配置文件到服务器...'
-                        sh "scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
-                        sh "scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
                         
                         // 复制环境变量文件前，确保文件存在
                         // 重新从凭据加载环境变量文件

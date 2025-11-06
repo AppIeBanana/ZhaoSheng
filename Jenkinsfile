@@ -182,31 +182,31 @@ pipeline {
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', passphraseVariable: 'SSH_PASSPHRASE', usernameVariable: 'SSH_USERNAME')]) {
-                        // 使用sh的credentials参数安全传递凭据，避免Groovy字符串插值的安全风险
-                        // 同时避免直接在命令行中使用passphrase参数
-                        echo '复制Docker镜像到服务器...'
+                        // 使用ssh-agent来处理带密码的私钥，这是Jenkins推荐的安全方式
+                        // 所有ssh/scp命令都在同一个脚本块中执行，确保ssh-agent环境可用
                         sh([
                             script: '''
-                                scp -o StrictHostKeyChecking=no -i ${SSH_KEY} ${DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
+                                # 启动ssh-agent
+                                eval $(ssh-agent -s)
+                                
+                                # 将密码作为环境变量传递，然后安全地添加私钥
+                                echo "$SSH_PASSPHRASE" | ssh-add "$SSH_KEY"
+                                
+                                echo '复制Docker镜像到服务器...'
+                                scp -o StrictHostKeyChecking=no "$DOCKER_IMAGE_NAME.tar" "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH"
+                                
+                                echo '复制配置文件到服务器...'
+                                scp -o StrictHostKeyChecking=no docker-compose.yml "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH"
+                                scp -o StrictHostKeyChecking=no nginx.conf "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH"
+                                
+                                # 完成后关闭ssh-agent
+                                ssh-agent -k
                             ''',
                             env: [
                                 "SSH_KEY=${SSH_KEY}",
+                                "SSH_PASSPHRASE=${SSH_PASSPHRASE}",
+                                "SSH_USERNAME=${SSH_USERNAME}",
                                 "DOCKER_IMAGE_NAME=${params.DOCKER_IMAGE_NAME}",
-                                "SSH_USERNAME=${SSH_USERNAME}",
-                                "DEPLOY_SERVER=${params.DEPLOY_SERVER}",
-                                "DEPLOY_PATH=${params.DEPLOY_PATH}"
-                            ]
-                        ])
-                        
-                        echo '复制配置文件到服务器...'
-                        sh([
-                            script: '''
-                                scp -o StrictHostKeyChecking=no -i ${SSH_KEY} docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
-                                scp -o StrictHostKeyChecking=no -i ${SSH_KEY} nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}
-                            ''',
-                            env: [
-                                "SSH_KEY=${SSH_KEY}",
-                                "SSH_USERNAME=${SSH_USERNAME}",
                                 "DEPLOY_SERVER=${params.DEPLOY_SERVER}",
                                 "DEPLOY_PATH=${params.DEPLOY_PATH}"
                             ]

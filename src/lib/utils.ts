@@ -235,7 +235,12 @@ export async function fetchWithRetry(url: string, options: RequestInit, retries 
  * 获取后端API基础URL
  */
 export function getBackendApiUrl(): string {
-  return import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001';
+  // 根据环境使用正确的API URL配置
+  const currentEnv = import.meta.env.NODE_ENV || 'development';
+  if (currentEnv === 'production') {
+    return import.meta.env.VITE_PROD_BACKEND_API_URL;
+  }
+  return import.meta.env.VITE_DEV_BACKEND_API_URL;
 }
 
 export function cn(...inputs: ClassValue[]) {

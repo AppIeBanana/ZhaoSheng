@@ -193,12 +193,12 @@ pipeline {
                         
                         // 复制Docker镜像
                         echo '复制Docker镜像到服务器...'
-                        sh "scp -o StrictHostKeyChecking=no ${params.DOCKER_IMAGE_NAME}.tar ${params.SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
+                        sh "scp -o StrictHostKeyChecking=no ${params.DOCKER_IMAGE_NAME}.tar ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
                         
                         // 复制必要的配置文件
                         echo '复制配置文件到服务器...'
-                        sh "scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
-                        sh "scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
+                        sh "scp -o StrictHostKeyChecking=no docker-compose.yml ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
+                        sh "scp -o StrictHostKeyChecking=no nginx.conf ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
                         
                         // 复制环境变量文件前，确保文件存在
                         // 重新从凭据加载环境变量文件
@@ -210,13 +210,13 @@ pipeline {
                             
                             // 复制环境变量文件
                             echo '复制环境变量文件到服务器...'
-                            sh "scp -o StrictHostKeyChecking=no .env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}"
-                            sh "scp -o StrictHostKeyChecking=no backend/.env ${SSH_USERNAME}@${DEPLOY_SERVER}:${DEPLOY_PATH}/backend"
+                            sh "scp -o StrictHostKeyChecking=no .env ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
+                            sh "scp -o StrictHostKeyChecking=no backend/.env ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}/backend"
                         }
                         
                         // 在部署服务器上加载镜像并启动服务
                         echo '在服务器上部署应用...'
-                        sh """ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${DEPLOY_SERVER} 'cd ${DEPLOY_PATH} && \
+                        sh """ssh -o StrictHostKeyChecking=no ${SSH_USERNAME}@${params.DEPLOY_SERVER} 'cd ${params.DEPLOY_PATH} && \
                             echo '开始部署应用...' && \
                             # 设置日志目录结构和权限（直接在Jenkinsfile中实现） && \
                             echo '设置日志目录结构和权限...' && \

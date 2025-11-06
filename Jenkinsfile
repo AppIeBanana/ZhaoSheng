@@ -182,48 +182,49 @@ pipeline {
                     
                     // 使用SSH将tar文件和必要配置文件复制到部署服务器
                     withCredentials([sshUserPrivateKey(credentialsId: 'jenkins_ssh', keyFileVariable: 'SSH_KEY', passphraseVariable: 'SSH_PASSPHRASE', usernameVariable: 'SSH_USERNAME')]) {
-                        // 使用ssh-agent来处理带密码的私钥，这是Jenkins推荐的安全方式
-                        // 所有ssh/scp命令都在同一个脚本块中执行，确保ssh-agent环境可用
-                        sh([
-                            script: '''
-                                # 启动ssh-agent
-                                eval $(ssh-agent -s)
-                                
-                                # 将密码作为环境变量传递，然后安全地添加私钥
-                                echo "$SSH_PASSPHRASE" | ssh-add "$SSH_KEY"
-                                
-                                echo '复制Docker镜像到服务器...'
-                                scp -o StrictHostKeyChecking=no "$DOCKER_IMAGE_NAME.tar" "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH"
-                                
-                                echo '复制配置文件到服务器...'
-                                scp -o StrictHostKeyChecking=no docker-compose.yml "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH"
-                                scp -o StrictHostKeyChecking=no nginx.conf "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH"
-                                
-                                # 完成后关闭ssh-agent
-                                ssh-agent -k
-                            ''',
-                            env: [
-                                "SSH_KEY=${SSH_KEY}",
-                                "SSH_PASSPHRASE=${SSH_PASSPHRASE}",
-                                "SSH_USERNAME=${SSH_USERNAME}",
-                                "DOCKER_IMAGE_NAME=${params.DOCKER_IMAGE_NAME}",
-                                "DEPLOY_SERVER=${params.DEPLOY_SERVER}",
-                                "DEPLOY_PATH=${params.DEPLOY_PATH}"
-                            ]
-                        ])
-                        
                         // 复制环境变量文件前，确保文件存在
                         // 重新从凭据加载环境变量文件
                         withCredentials([file(credentialsId: 'zhaosheng_env', variable: 'ENV_FILE'),
                                         file(credentialsId: 'zhaosheng_backend_env', variable: 'BACKEND_ENV_FILE')]) {
+                            // 先准备环境变量文件
                             sh 'mkdir -p backend'
                             sh 'cp $ENV_FILE .env'
                             sh 'cp $BACKEND_ENV_FILE backend/.env'
                             
-                            // 复制环境变量文件
-                            echo '复制环境变量文件到服务器...'
-                            sh "scp -o StrictHostKeyChecking=no .env ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}"
-                            sh "scp -o StrictHostKeyChecking=no backend/.env ${SSH_USERNAME}@${params.DEPLOY_SERVER}:${params.DEPLOY_PATH}/backend"
+                            // 使用ssh-agent来处理带密码的私钥，并在同一脚本块中执行所有SCP命令
+                            // 这样所有文件复制操作都能使用已加载的SSH私钥
+                            sh([
+                                script: '''
+                                    # 启动ssh-agent
+                                    eval $(ssh-agent -s)
+                                    
+                                    # 将密码作为环境变量传递，然后安全地添加私钥
+                                    echo "$SSH_PASSPHRASE" | ssh-add "$SSH_KEY"
+                                    
+                                    # 复制所有文件，确保使用相同的SSH认证上下文
+                                    echo '复制Docker镜像到服务器...'
+                                    scp -o StrictHostKeyChecking=no "$DOCKER_IMAGE_NAME.tar" "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH"
+                                    
+                                    echo '复制配置文件到服务器...'
+                                    scp -o StrictHostKeyChecking=no docker-compose.yml "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH"
+                                    scp -o StrictHostKeyChecking=no nginx.conf "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH"
+                                    
+                                    echo '复制环境变量文件到服务器...'
+                                    scp -o StrictHostKeyChecking=no .env "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH"
+                                    scp -o StrictHostKeyChecking=no backend/.env "$SSH_USERNAME@$DEPLOY_SERVER:$DEPLOY_PATH/backend"
+                                    
+                                    # 完成后关闭ssh-agent
+                                    ssh-agent -k
+                                ''',
+                                env: [
+                                    "SSH_KEY=${SSH_KEY}",
+                                    "SSH_PASSPHRASE=${SSH_PASSPHRASE}",
+                                    "SSH_USERNAME=${SSH_USERNAME}",
+                                    "DOCKER_IMAGE_NAME=${params.DOCKER_IMAGE_NAME}",
+                                    "DEPLOY_SERVER=${params.DEPLOY_SERVER}",
+                                    "DEPLOY_PATH=${params.DEPLOY_PATH}"
+                                ]
+                            ])
                         }
                         
                         // 在部署服务器上加载镜像并启动服务

@@ -1,27 +1,17 @@
-import { useState, useRef } from 'react';
-import { toast } from 'sonner';
-
 interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
   onSend: () => void;
   isLoading: boolean;
-  onFileSelect?: (file: File) => void;
-  onVoiceStart?: () => void;
-  onVoiceStop?: () => void;
 }
 
 export default function ChatInput({
   value,
   onChange,
   onSend,
-  isLoading,
-  onFileSelect,
-  onVoiceStart,
-  onVoiceStop
+  isLoading
 }: ChatInputProps) {
-  const [isRecording, setIsRecording] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // 文件上传引用暂时保留，以备将来需要恢复功能
 
   // 处理输入变化
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,38 +33,7 @@ export default function ChatInput({
     }
   };
 
-  // 处理文件上传点击
-  const handleFileUploadClick = () => {
-    if (!isLoading) {
-      fileInputRef.current?.click();
-    }
-  };
-
-  // 处理文件选择
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      toast.info(`已选择文件: ${file.name}`);
-      onFileSelect?.(file);
-      // 重置文件输入，允许重复上传同一文件
-      e.target.value = '';
-    }
-  };
-
-  // 处理语音输入点击
-  const handleVoiceClick = () => {
-    if (isLoading) return;
-
-    if (isRecording) {
-      // 停止录音
-      setIsRecording(false);
-      onVoiceStop?.();
-    } else {
-      // 开始录音
-      setIsRecording(true);
-      onVoiceStart?.();
-    }
-  };
+  // 已删除未使用的文件上传和语音输入相关函数
 
   return (
     <div className="bg-white p-2 border-t fixed bottom-0 left-0 right-0 z-10 max-w-full pb-[env(safe-area-inset-bottom)]">

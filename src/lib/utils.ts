@@ -36,7 +36,7 @@ export function safeSetItem(_key: string, _value: any, _expiry: number = STORAGE
     
     localStorage.setItem(key, JSON.stringify(item));
     return true;
-  } catch (error) {
+  } catch (error: unknown) {
     // 如果是空间不足错误，尝试清理数据
     if (error instanceof DOMException && error.name === 'QuotaExceededError') {
       console.warn('localStorage空间不足，尝试清理最旧数据...');
@@ -118,7 +118,7 @@ export function safeGetItem(_key: string): any | null {
     }
     
     return item.value;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('localStorage读取失败:', error);
     // 如果读取失败，尝试删除该项
     try {
@@ -181,7 +181,7 @@ export function cleanupOldestStorageData(): void {
         localStorage.removeItem(storageItems[i].key);
       }
     }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('清理localStorage失败:', error);
   }
   */
@@ -195,7 +195,7 @@ export function safeRemoveItem(_key: string): void {
   /*
   try {
     localStorage.removeItem(key);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error(`移除localStorage项 ${key} 失败:`, error);
   }
   */
@@ -204,30 +204,111 @@ export function safeRemoveItem(_key: string): void {
 /**
  * 带重试和超时的fetch函数
  */
-export async function fetchWithRetry(url: string, options: RequestInit, retries = 2, timeoutMs = 10000): Promise<Response> {
+export async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 2, timeoutMs = 10000): Promise<Response> {
+  // 记录请求的详细信息
+  const method = options.method || 'GET';
+  const requestDetails = {
+    method,
+    url,
+    headers: options.headers || {},
+    hasBody: !!options.body,
+    timeout: timeoutMs,
+    retryCount: retries
+  };
+  
+  // 创建一个AbortController来处理超时
+  const controller = new AbortController();
+  
   try {
-    // 创建一个AbortController来处理超时
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    
-    // 合并options，添加signal
+    // 只有在options中没有signal时才添加我们的signal
     const fetchOptions = {
       ...options,
-      signal: controller.signal
+      signal: options.signal || controller.signal
     };
     
-    const response = await fetch(url, fetchOptions);
+    console.log(`[FETCH] 执行请求 (1/${retries + 1}): ${method} ${url}`);
+    console.log(`[FETCH] 请求详情:`, requestDetails);
     
-    // 请求成功完成，清除超时定时器
-    clearTimeout(timeoutId);
+    // 设置超时
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error(`请求超时: ${timeoutMs}ms`));
+        // 只有在使用我们自己的signal时才abort
+        if (!options.signal) {
+          controller.abort();
+        }
+      }, timeoutMs);
+      
+      // 清理函数，防止内存泄漏
+      return () => clearTimeout(timeoutId);
+    });
+    
+    // 竞争fetch和timeout
+    const response = await Promise.race([
+      fetch(url, fetchOptions),
+      timeoutPromise
+    ]);
+    
+    console.log(`[FETCH] 请求响应: ${url}, 状态码: ${response.status}`);
+    
+    if (!response.ok) {
+      console.error(`[FETCH] 请求失败: ${url}, 状态码: ${response.status}`);
+      
+      // 尝试获取错误响应体
+      try {
+        const errorData = await response.clone().json();
+        console.error(`[FETCH] 错误响应内容:`, errorData);
+      } catch (jsonError: unknown) {
+        try {
+          const errorText = await response.clone().text();
+          console.error(`[FETCH] 错误响应文本:`, errorText);
+        } catch (textError: unknown) {
+          console.error(`[FETCH] 无法读取错误响应`);
+        }
+      }
+    } else {
+      console.log(`[FETCH] 请求成功: ${url}`);
+    }
+    
     return response;
-  } catch (error) {
-    if (retries > 0) {
-      console.log(`请求失败，正在进行第 ${3 - retries} 次重试...`);
+  } catch (error: unknown) {
+    // 清理controller资源
+    if (!options.signal) {
+      controller.abort(); // 确保资源被释放
+    }
+    
+    // 详细记录错误信息
+    if (error instanceof Error) {
+      console.error(`[FETCH] 请求异常: ${url}`, error);
+      console.error(`[FETCH] 错误类型: ${error.name}`);
+      console.error(`[FETCH] 错误消息: ${error.message}`);
+      console.error(`[FETCH] 错误堆栈: ${error.stack}`);
+      
+      // 区分不同类型的网络错误
+      if (error.name === 'AbortError') {
+        console.error(`[FETCH] 中止错误: 请求被中止或超时`);
+      } else if (error.message.includes('NetworkError')) {
+        console.error(`[FETCH] 网络错误: 可能是连接问题、CORS或服务器不可达`);
+      } else if (error.message.includes('请求超时')) {
+        console.error(`[FETCH] 超时错误: 服务器响应时间超过${timeoutMs}ms`);
+      }
+    }
+    
+    // 如果是AbortError或超时错误，尝试重试
+    if ((error as Error).name === 'AbortError' || (error as Error).message?.includes('请求超时') && retries > 0) {
+      const retryNum = 3 - retries;
+      console.log(`[FETCH] 请求超时或被中止，正在进行第 ${retryNum} 次重试...`);
+      
       // 指数退避
-      await new Promise(resolve => setTimeout(resolve, (3 - retries) * 500));
+      const waitTime = Math.pow(2, retryNum - 1) * 500;
+      console.log(`[FETCH] 等待 ${waitTime}ms 后重试请求: ${url}`);
+      
+      await new Promise(resolve => setTimeout(resolve, waitTime));
       return fetchWithRetry(url, options, retries - 1, timeoutMs);
     }
+    
+    // 其他错误或重试次数用完，抛出错误
+    console.error('[FETCH] fetch请求失败，已达到最大重试次数');
     throw error;
   }
 }

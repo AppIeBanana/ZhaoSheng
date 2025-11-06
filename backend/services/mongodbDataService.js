@@ -1,14 +1,22 @@
 // MongoDB数据服务 - 处理用户数据和聊天记录的持久化存储
 const mongoose = require('mongoose');
+const { mongodbLogger } = require('../utils/logger');
 
 // 由于项目已使用mongoose连接，我们直接使用现有的连接
 
-// 定义并注册模型
+// 定义并注册模型 - 兼容直接字段和data对象两种格式
 const UserSchema = new mongoose.Schema({
+  // 直接存储用户数据字段
+  phone: { type: String, index: true },
+  // 保留data字段以兼容旧数据结构
   data: Object,
+  // 元数据字段
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
-}, { collection: 'users' }); // 显式指定集合名称为users
+}, { 
+  collection: 'users', // 显式指定集合名称为users
+  strict: false // 允许存储schema中未定义的字段，提高灵活性
+}); // 显式指定集合名称为users
 
 const ChatHistorySchema = new mongoose.Schema({
   phone: String, // phone作为唯一标识符
@@ -25,8 +33,11 @@ const ChatHistory = mongoose.models.ChatHistory || mongoose.model('ChatHistory',
 // 底层数据访问函数 - 保持合并实现
 async function saveUserDataToMongoDB(_userId, userData) {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      throw new Error('MongoDB未连接');
+    // 添加更健壮的MongoDB连接检查
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      const error = new Error('MongoDB未连接或连接状态异常');
+      mongodbLogger.error('MongoDB连接检查失败:', { readyState: mongoose.connection?.readyState });
+      throw error;
     }
     
     if (!userData || !userData.phone) {
@@ -36,17 +47,22 @@ async function saveUserDataToMongoDB(_userId, userData) {
     // 只使用手机号作为查询条件
     const query = { 'phone': userData.phone };
     
-    // 查询现有文档
-    const existingDoc = await User.findOne(query);
+    // 构建更新数据，确保结构一致性
+    const updateData = {
+      ...userData, // 直接存储用户数据字段
+      'updatedAt': new Date() // 更新时间戳
+    };
+    
+    // 确保元数据一致性
+    if (!updateData.createdAt) {
+      updateData.createdAt = new Date();
+    }
     
     // 使用findOneAndUpdate进行更新或插入
     const result = await User.findOneAndUpdate(
       query,
       { 
-        $set: {
-          ...userData, // 直接更新用户数据，不再嵌套在data字段下
-          'updatedAt': new Date() // 更新时间戳
-        },
+        $set: updateData,
         $setOnInsert: {
           'createdAt': new Date()
         }
@@ -54,7 +70,7 @@ async function saveUserDataToMongoDB(_userId, userData) {
       { 
         upsert: true, 
         new: true,    
-        runValidators: true 
+        runValidators: false // 禁用验证器以提高兼容性
       }
     );
     
@@ -149,8 +165,11 @@ async function checkUserExists(_userId, phone) {
 // 从MongoDB获取用户数据
 async function getUserDataFromMongoDB(_userId, phone) {
   try {
-    if (mongoose.connection.readyState !== 1) {
-      throw new Error('MongoDB未连接');
+    // 添加更健壮的MongoDB连接检查
+    if (!mongoose.connection || mongoose.connection.readyState !== 1) {
+      const error = new Error('MongoDB未连接或连接状态异常');
+      mongodbLogger.error('MongoDB连接检查失败:', { readyState: mongoose.connection?.readyState });
+      throw error;
     }
     
     if (!phone) {
@@ -162,22 +181,23 @@ async function getUserDataFromMongoDB(_userId, phone) {
       'phone': phone
     };
     
-    // 使用已在文件顶部定义的User模型
-    
-    // 查询用户数据
-    const user = await User.findOne(query);
+    // 查询用户数据，添加超时控制
+    const user = await User.findOne(query).maxTimeMS(5000); // 5秒超时
     
     if (user) {
-      // 返回数据时包含_id，以便前端使用
+      // 安全转换为对象，处理可能的字段缺失
+      const userObj = user.toObject();
+      
+      // 确保返回数据结构一致性，包含_id字段
       return {
-        ...user.toObject(),
-        _id: user._id.toString()
+        ...userObj,
+        _id: userObj._id?.toString() || user._id.toString() // 兼容不同情况下的_id访问
       };
     }
     
     return null;
   } catch (error) {
-    console.error('从MongoDB获取用户数据失败:', error);
+    mongodbLogger.error('从MongoDB获取用户数据失败:', { error: error.message, stack: error.stack, phone });
     throw error;
   }
 }

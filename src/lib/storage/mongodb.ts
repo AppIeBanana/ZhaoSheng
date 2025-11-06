@@ -56,13 +56,16 @@ export async function saveUserDataMongo(userId: string, userData: any, redisConf
  * 从MongoDB或Redis缓存获取用户数据
  */
 export async function getUserDataMongo(userId: string, phone: string, redisConfig?: { host: string; port: number }): Promise<any | null> {
+  const startTime = Date.now();
+  const operationId = `mongo-get-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  console.log(`[MONGODB] [${operationId}] 开始获取用户数据: userId=${userId}, phone=${phone}`);
+  
   try {
     if (!phone) {
-      console.log('未提供手机号，跳过MongoDB数据获取');
+      console.error(`[MONGODB] [${operationId}] 错误: 未提供手机号，跳过MongoDB数据获取`);
       return null;
     }
-
-    console.log(`准备从MongoDB获取用户数据: userId=${userId}, phone=${phone}`);
 
     // 构建查询参数，保持参数顺序，但修改参数值以匹配后端期望
     const queryParams = new URLSearchParams();
@@ -71,11 +74,12 @@ export async function getUserDataMongo(userId: string, phone: string, redisConfi
     if (redisConfig) {
       queryParams.append('host', redisConfig.host);
       queryParams.append('port', redisConfig.port.toString());
+      console.log(`[MONGODB] [${operationId}] 使用自定义Redis配置: host=${redisConfig.host}, port=${redisConfig.port}`);
     }
 
     const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
     const url = `${getApiUrl()}/api/user-data/getUserData${queryString}`;
-    console.log(`请求URL: ${url}`);
+    console.log(`[MONGODB] [${operationId}] 请求URL: ${url}`);
     
     const response = await fetchWithRetry(
       url,
@@ -91,12 +95,41 @@ export async function getUserDataMongo(userId: string, phone: string, redisConfi
     );
 
     if (!response.ok) {
-      console.warn(`从MongoDB获取用户数据响应失败: 状态码=${response.status}`);
+      console.error(`[MONGODB] [${operationId}] ❌ 从MongoDB获取用户数据响应失败: 状态码=${response.status}`);
+      
+      // 尝试获取响应体中的错误信息
+      try {
+        const errorData = await response.clone().json();
+        console.error(`[MONGODB] [${operationId}] 错误响应内容:`, errorData);
+        
+        // 分析常见的错误状态码
+        if (response.status === 502) {
+          console.error(`[MONGODB] [${operationId}] - 分析: 502 Bad Gateway，可能是后端服务不可用或配置错误`);
+        } else if (response.status === 503) {
+          console.error(`[MONGODB] [${operationId}] - 分析: 503 Service Unavailable，MongoDB服务可能未启动或连接池耗尽`);
+        } else if (response.status === 404) {
+          console.error(`[MONGODB] [${operationId}] - 分析: 404 Not Found，API端点可能不存在`);
+        }
+      } catch (jsonError) {
+        try {
+          const errorText = await response.clone().text();
+          console.error(`[MONGODB] [${operationId}] 错误响应文本:`, errorText);
+        } catch (textError) {
+          console.error(`[MONGODB] [${operationId}] 无法读取错误响应`);
+        }
+      }
+      
       return null;
     }
     
     try {
       const result = await response.json();
+      console.log(`[MONGODB] [${operationId}] 收到响应数据:`, {
+        success: result.success,
+        source: result.source,
+        hasData: !!result.data
+      });
+      
       if (result.success && result.data) {
         console.log(`从MongoDB获取用户数据成功`);
         return result.data;
@@ -104,14 +137,42 @@ export async function getUserDataMongo(userId: string, phone: string, redisConfi
         console.log('从MongoDB获取到的数据格式不正确或请求未成功');
       }
     } catch (jsonError) {
-      console.error('解析响应JSON失败:', jsonError);
+        console.error(`[MONGODB] [${operationId}] ❌ 解析响应JSON失败:`);
+        if (jsonError instanceof Error) {
+          console.error(`[MONGODB] [${operationId}] - 错误类型: ${jsonError.name}`);
+          console.error(`[MONGODB] [${operationId}] - 错误消息: ${jsonError.message}`);
+          console.error(`[MONGODB] [${operationId}] - 错误堆栈: ${jsonError.stack}`);
+        } else {
+          console.error(`[MONGODB] [${operationId}] - 错误对象:`, jsonError);
+        }
+      }
+      
+      const endTime = Date.now();
+      console.log(`[MONGODB] [${operationId}] 操作完成，耗时: ${endTime - startTime}ms`);
+      return null;
+    } catch (error) {
+      console.error(`[MONGODB] [${operationId}] ❌ 从MongoDB获取用户数据时发生错误:`);
+      if (error instanceof Error) {
+        console.error(`[MONGODB] [${operationId}] - 错误类型: ${error.name}`);
+        console.error(`[MONGODB] [${operationId}] - 错误消息: ${error.message}`);
+        console.error(`[MONGODB] [${operationId}] - 错误堆栈: ${error.stack}`);
+        
+        // 特定错误类型的分析
+        if (error.name === 'AbortError') {
+          console.error(`[MONGODB] [${operationId}] - 分析: 连接超时或被中止，可能是MongoDB服务器无响应`);
+        } else if (error.message.includes('NetworkError')) {
+          console.error(`[MONGODB] [${operationId}] - 分析: 网络错误，可能是后端API不可达或CORS问题`);
+        } else if (error.message.includes('ECONNREFUSED')) {
+          console.error(`[MONGODB] [${operationId}] - 分析: 连接被拒绝，检查MongoDB服务是否运行和端口配置`);
+        }
+      } else {
+        console.error(`[MONGODB] [${operationId}] - 错误对象:`, error);
+      }
+      
+      const endTime = Date.now();
+      console.error(`[MONGODB] [${operationId}] 操作失败，耗时: ${endTime - startTime}ms`);
+      return null;
     }
-    return null;
-  } catch (error) {
-    console.error('从MongoDB获取用户数据时发生错误:', error);
-    // 即使请求失败，也返回null而不是抛出错误，让流程继续进行
-    return null;
-  }
 }
 
 /**

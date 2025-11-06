@@ -54,13 +54,16 @@ export async function saveUserDataRedis(userId: string, userData: any): Promise<
  * 从Redis获取用户数据（通过后端API）
  */
 export async function getUserDataRedis(userId: string, phone: string): Promise<any | null> {
+  const startTime = Date.now();
+  const operationId = `redis-get-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  console.log(`[REDIS] [${operationId}] 开始获取用户数据: userId=${userId}, phone=${phone}`);
+  
   try {
     if (!phone) {
-      console.log('未提供手机号，跳过Redis数据获取');
+      console.error(`[REDIS] [${operationId}] 错误: 未提供手机号，跳过Redis数据获取`);
       return null;
     }
-    console.log(`Redis配置: host=${config.redisHost}, port=${config.redisPort}`);
-    console.log(`准备从Redis获取用户数据: userId=${userId}, phone=${phone}`);
     
     // 通过API从Redis缓存获取数据，使用查询参数传递userId
     const queryParams = new URLSearchParams();
@@ -69,7 +72,8 @@ export async function getUserDataRedis(userId: string, phone: string): Promise<a
     queryParams.append('cache', 'true');
     
     const url = `${getApiUrl()}/api/user-data/getUserData?${queryParams.toString()}`;
-    console.log(`请求URL: ${url}`);
+    console.log(`[REDIS] [${operationId}] 请求URL: ${url}`);
+    console.log(`[REDIS] [${operationId}] Redis配置: host=${config.redisHost}, port=${config.redisPort}`);
     
     const response = await fetchWithRetry(
       url,
@@ -85,24 +89,80 @@ export async function getUserDataRedis(userId: string, phone: string): Promise<a
     );
 
     if (!response.ok) {
-      console.warn(`从Redis获取用户数据响应失败: 状态码=${response.status}`);
+      console.error(`[REDIS] [${operationId}] ❌ 从Redis获取用户数据响应失败: 状态码=${response.status}`);
+      
+      // 尝试获取响应体中的错误信息
+      try {
+        const errorData = await response.clone().json();
+        console.error(`[REDIS] [${operationId}] 错误响应内容:`, errorData);
+      } catch (jsonError) {
+        try {
+          const errorText = await response.clone().text();
+          console.error(`[REDIS] [${operationId}] 错误响应文本:`, errorText);
+        } catch (textError) {
+          console.error(`[REDIS] [${operationId}] 无法读取错误响应`);
+        }
+      }
+      
       return null;
     }
     
     try {
       const result = await response.json();
-      if (result.success && result.data && result.source === 'redis') {
-        console.log('从Redis缓存获取用户数据成功');
-        return result.data;
+      console.log(`[REDIS] [${operationId}] 收到响应数据:`, {
+        success: result.success,
+        source: result.source,
+        hasData: !!result.data
+      });
+      
+      if (result.success && result.data) {
+        if (result.source === 'redis') {
+          console.log(`[REDIS] [${operationId}] ✅ 从Redis缓存获取用户数据成功`);
+          return result.data;
+        } else {
+          console.warn(`[REDIS] [${operationId}] ⚠️ 数据源不是Redis，而是: ${result.source || '未知'}`);
+        }
       } else {
-        console.log('从Redis获取到的数据格式不正确或不是来自Redis');
+        console.warn(`[REDIS] [${operationId}] ⚠️ 从Redis获取到的数据格式不正确:`);
+        console.warn(`[REDIS] [${operationId}] - success: ${result.success}`);
+        console.warn(`[REDIS] [${operationId}] - source: ${result.source}`);
+        console.warn(`[REDIS] [${operationId}] - data: ${result.data ? '存在' : '不存在'}`);
       }
     } catch (jsonError) {
-      console.error('解析响应JSON失败:', jsonError);
+      console.error(`[REDIS] [${operationId}] ❌ 解析响应JSON失败:`);
+      if (jsonError instanceof Error) {
+        console.error(`[REDIS] [${operationId}] - 错误类型: ${jsonError.name}`);
+        console.error(`[REDIS] [${operationId}] - 错误消息: ${jsonError.message}`);
+        console.error(`[REDIS] [${operationId}] - 错误堆栈: ${jsonError.stack}`);
+      } else {
+        console.error(`[REDIS] [${operationId}] - 错误对象:`, jsonError);
+      }
     }
+    
+    const endTime = Date.now();
+    console.log(`[REDIS] [${operationId}] 操作完成，耗时: ${endTime - startTime}ms`);
     return null;
   } catch (error) {
-    console.error('从Redis获取用户数据时发生错误:', error);
+    console.error(`[REDIS] [${operationId}] ❌ 从Redis获取用户数据时发生错误:`);
+    if (error instanceof Error) {
+      console.error(`[REDIS] [${operationId}] - 错误类型: ${error.name}`);
+      console.error(`[REDIS] [${operationId}] - 错误消息: ${error.message}`);
+      console.error(`[REDIS] [${operationId}] - 错误堆栈: ${error.stack}`);
+      
+      // 特定错误类型的分析
+      if (error.name === 'AbortError') {
+        console.error(`[REDIS] [${operationId}] - 分析: 连接超时或被中止，可能是Redis服务器无响应`);
+      } else if (error.message.includes('NetworkError')) {
+        console.error(`[REDIS] [${operationId}] - 分析: 网络错误，可能是后端API不可达或CORS问题`);
+      } else if (error.message.includes('ECONNREFUSED')) {
+        console.error(`[REDIS] [${operationId}] - 分析: 连接被拒绝，检查Redis服务是否运行和端口配置`);
+      }
+    } else {
+      console.error(`[REDIS] [${operationId}] - 错误对象:`, error);
+    }
+    
+    const endTime = Date.now();
+    console.error(`[REDIS] [${operationId}] 操作失败，耗时: ${endTime - startTime}ms`);
     // 即使请求失败，也返回null而不是抛出错误，让流程继续进行
     return null;
   }

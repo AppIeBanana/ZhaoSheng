@@ -1,6 +1,7 @@
 // 导入所需模块
 const express = require('express');
 const router = express.Router();
+const { systemLogger } = require('../utils/logger');
 
 // 导入数据服务
 const redisDataService = require('../services/redisDataService');
@@ -74,22 +75,41 @@ router.get('/getUserData', async (req, res) => {
       return res.status(400).json({ error: '手机号格式不正确' });
     }
     
+    // 记录请求信息
+    systemLogger.info('获取用户数据请求', { phone });
+    
     // 1. 首先尝试从Redis获取数据
     let userData = await redisDataService.getUserDataFromRedis(phone);
     
     // 2. 如果Redis中没有数据，则从MongoDB获取
     if (!userData) {
-      userData = await mongodbDataService.getUserDataFromMongoDB(null, phone);
-      
-      // 3. 如果MongoDB中有数据，将其回填到Redis中
-      if (userData) {
-        await redisDataService.saveUserDataToRedis(
-          phone, 
-          userData,
-          7 * 24 * 60 * 60 // 7天过期时间（秒）
-        );
-      } else {
-        return res.status(404).json({ error: '用户数据不存在' });
+      try {
+        userData = await mongodbDataService.getUserDataFromMongoDB(null, phone);
+        
+        // 3. 如果MongoDB中有数据，将其回填到Redis中
+        if (userData) {
+          // 异步回填Redis，不阻塞响应
+          redisDataService.saveUserDataToRedis(
+            phone, 
+            userData,
+            7 * 24 * 60 * 60 // 7天过期时间（秒）
+          ).catch(err => {
+            systemLogger.warn('Redis回填失败', { phone, error: err.message });
+          });
+        } else {
+          return res.status(404).json({ error: '用户数据不存在' });
+        }
+      } catch (mongoError) {
+        // 特别处理MongoDB连接错误
+        if (mongoError.message.includes('MongoDB未连接')) {
+          systemLogger.error('MongoDB连接错误', { error: mongoError.message });
+          return res.status(503).json({ 
+            success: false, 
+            error: '数据服务暂时不可用，请稍后再试',
+            type: 'DATABASE_CONNECTION_ERROR'
+          });
+        }
+        throw mongoError; // 重新抛出其他MongoDB错误
       }
     }
     
@@ -98,10 +118,11 @@ router.get('/getUserData', async (req, res) => {
       data: userData
     });
   } catch (error) {
-    console.error('获取用户数据失败:', error);
+    systemLogger.error('获取用户数据失败:', { error: error.message, stack: error.stack });
     res.status(500).json({ 
       success: false, 
-      error: error.message || '获取用户数据时发生错误' 
+      error: '获取用户数据时发生错误',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });

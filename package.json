@@ -7,6 +7,7 @@
     "dev:client": "vite --host --port 3000",
 
     "dev:backend": "cd backend && node server.js",
+    "start:backend": "cd backend && node server.js",
     "dev": "pnpm dev:client",
 
     "install:all": "pnpm install && cd backend && pnpm install",

@@ -17,7 +17,7 @@ const config = configLoader.default || {};
 const NODE_ENV = configLoader.NODE_ENV || 'development';
 
 // 确保配置中包含SSL路径
-if (NODE_ENV.indexOf('production') >= 0) {
+if (NODE_ENV === 'production') {
   config.SSL_KEY_PATH = config.SSL_KEY_PATH || '/etc/letsencrypt/live/zswd.fzrjxy.com/privkey.pem';
   config.SSL_CERT_PATH = config.SSL_CERT_PATH || '/etc/letsencrypt/live/zswd.fzrjxy.com/fullchain.pem';
 } else {
@@ -45,12 +45,12 @@ const healthRoutes = require('./routes/healthRoutes');
 
 // 配置中间件 - 根据环境配置CORS
 const corsOptions = {
-  methods: ['GET', 'POST', 'DELETE', 'PUT'],
+  methods: ['GET', 'POST', 'DELETE'],
   credentials: true
 };
 
 // 根据环境设置不同的CORS源
-if (NODE_ENV.indexOf('development') >= 0) {
+if (NODE_ENV === 'development') {
   corsOptions.origin = [
     'http://localhost:3000',
     'http://192.168.5.3:3000' // 局域网IP地址
@@ -94,64 +94,25 @@ async function startServer() {
     // 记录环境信息
     systemLogger.info(`服务器启动 - 环境: ${NODE_ENV}, 端口: ${PORT}`);
     
-    // 根据环境决定是否使用HTTPS
-    if (NODE_ENV.indexOf('production') >= 0 && config.SSL_KEY_PATH && config.SSL_CERT_PATH) {
-      try {
-        // 检查证书文件是否存在
-        if (fs.existsSync(config.SSL_KEY_PATH) && fs.existsSync(config.SSL_CERT_PATH)) {
-          // HTTPS配置
-          const privateKey = fs.readFileSync(config.SSL_KEY_PATH, 'utf8');
-          const certificate = fs.readFileSync(config.SSL_CERT_PATH, 'utf8');
-          const credentials = { key: privateKey, cert: certificate };
+    // 根据端口决定是否使用HTTPS
+    if (PORT === 443 || PORT === 4431) {
+      // HTTPS配置
+      const privateKey = fs.readFileSync(config.SSL_KEY_PATH || './ssl/private.key', 'utf8');
+      const certificate = fs.readFileSync(config.SSL_CERT_PATH || './ssl/certificate.crt', 'utf8');
+      const credentials = { key: privateKey, cert: certificate };
 
-          const httpsServer = https.createServer(credentials, app);
-          httpsServer.listen(PORT, () => {
-            const serverMessage = `后端HTTPS服务器运行在 https://localhost:${PORT}`;
-            systemLogger.info(serverMessage);
-            console.log(serverMessage);
-            
-            const redisInitMessage = 'Redis连接配置将在首次访问时初始化';
-            systemLogger.info(redisInitMessage);
-            console.log(redisInitMessage);
-          });
-        } else {
-          // 证书文件不存在，使用HTTP
-          systemLogger.warn('SSL证书文件不存在，将使用HTTP协议');
-          console.warn('SSL证书文件不存在，将使用HTTP协议');
-          app.listen(PORT, '0.0.0.0', () => {
-            const serverMessage = `后端服务器运行在 http://0.0.0.0:${PORT}`;
-            systemLogger.info(serverMessage);
-            console.log(serverMessage);
-            
-            const lanMessage = '服务器可通过局域网IP访问，支持多用户测试';
-            systemLogger.info(lanMessage);
-            console.log(lanMessage);
-            
-            const redisInitMessage = 'Redis连接配置将在首次访问时初始化';
-            systemLogger.info(redisInitMessage);
-            console.log(redisInitMessage);
-          });
-        }
-      } catch (sslError) {
-        // SSL配置出错，降级使用HTTP
-        systemLogger.error('SSL配置错误，将使用HTTP协议:', { error: sslError.message });
-        console.error('SSL配置错误，将使用HTTP协议:', sslError);
-        app.listen(PORT, '0.0.0.0', () => {
-          const serverMessage = `后端服务器运行在 http://0.0.0.0:${PORT}`;
-          systemLogger.info(serverMessage);
-          console.log(serverMessage);
-          
-          const lanMessage = '服务器可通过局域网IP访问，支持多用户测试';
-          systemLogger.info(lanMessage);
-          console.log(lanMessage);
-          
-          const redisInitMessage = 'Redis连接配置将在首次访问时初始化';
-          systemLogger.info(redisInitMessage);
-          console.log(redisInitMessage);
-        });
-      }
+      const httpsServer = https.createServer(credentials, app);
+      httpsServer.listen(PORT, () => {
+        const serverMessage = `后端HTTPS服务器运行在 https://localhost:${PORT}`;
+        systemLogger.info(serverMessage);
+        console.log(serverMessage);
+        
+        const redisInitMessage = 'Redis连接配置将在首次访问时初始化';
+        systemLogger.info(redisInitMessage);
+        console.log(redisInitMessage);
+      });
     } else {
-      // HTTP配置（开发环境或SSL配置不完整）
+      // HTTP配置（开发环境）
       app.listen(PORT, '0.0.0.0', () => {
         const serverMessage = `后端服务器运行在 http://0.0.0.0:${PORT}`;
         systemLogger.info(serverMessage);

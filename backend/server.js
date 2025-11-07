@@ -56,11 +56,8 @@ if (NODE_ENV === 'development') {
     'http://192.168.5.3:3000' // 局域网IP地址
   ];
 } else {
-  // 生产环境设置
-  corsOptions.origin = [
-    'https://zswd.fzrjxy.com',
-    'http://175.42.63.9:82'
-  ];
+  // 生产环境设置 - 允许所有来源并正确处理代理请求
+  corsOptions.origin = '*';
 }
 
 app.use(cors(corsOptions));
@@ -94,8 +91,8 @@ async function startServer() {
     // 记录环境信息
     systemLogger.info(`服务器启动 - 环境: ${NODE_ENV}, 端口: ${PORT}`);
     
-    // 根据端口决定是否使用HTTPS
-    if (PORT === 443 || PORT === 4431) {
+    // 生产环境使用HTTPS，支持直接通过4431端口访问
+    if (NODE_ENV === 'production') {
       // HTTPS配置
       const privateKey = fs.readFileSync(config.SSL_KEY_PATH || './ssl/private.key', 'utf8');
       const certificate = fs.readFileSync(config.SSL_CERT_PATH || './ssl/certificate.crt', 'utf8');
@@ -112,7 +109,7 @@ async function startServer() {
         console.log(redisInitMessage);
       });
     } else {
-      // HTTP配置（开发环境）
+      // 开发环境使用HTTP
       app.listen(PORT, '0.0.0.0', () => {
         const serverMessage = `后端服务器运行在 http://0.0.0.0:${PORT}`;
         systemLogger.info(serverMessage);

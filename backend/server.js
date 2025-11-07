@@ -56,9 +56,9 @@ if (NODE_ENV === 'development') {
     'http://192.168.5.3:3000' // 局域网IP地址
   ];
 } else {
-  // 生产环境设置 - 允许所有来源并正确处理代理请求
-  corsOptions.origin = '*';
-}
+    // 生产环境设置 - 使用具体的前端域名以支持凭据
+    corsOptions.origin = 'https://zswd.fzrjxy.com';
+  }
 
 app.use(cors(corsOptions));
 

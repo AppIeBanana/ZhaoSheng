@@ -19,7 +19,7 @@ export default function Header({ showBackButton = true }: HeaderProps) {
         </button>
       )}
       <img 
-        src="../imgs/校徽.png" 
+        src="/imgs/校徽.png" 
         alt="校徽" 
         className="w-[15vw] h-auto mb-2 mx-auto" 
       />

@@ -142,11 +142,13 @@ export default function InfoCollection() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       {/* 使用通用Header组件 */}
       <Header showBackButton={false} />
-      <div className="px-4 pt-24 pb-8">
+      <div className="px-4 pt-4 pb-4 h-[calc(100vh-100px)] flex flex-col">
       
-      {/* Form Card */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 mb-8 transform transition-all duration-300 hover:shadow-xl">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Content Container - 确保所有元素都在div内部 */}
+      <div className="flex-1 flex flex-col">
+        {/* Form Card */}
+        <div className="bg-white rounded-2xl shadow-lg p-6 flex-1 min-h-0 transform transition-all duration-300 hover:shadow-xl">
+          <form onSubmit={handleSubmit} className="space-y-6">
           {/* Exam Type */}
           <div className="space-y-2">
             <label className="block text-sm font-medium text-gray-700">考试类型 <span className="text-red-500">*</span></label>
@@ -277,12 +279,13 @@ export default function InfoCollection() {
             )}
           </button>
         </form>
-      </div>
-      
-      {/* Footer */}
-      <div className="text-center text-xs text-gray-500">
-        <p>本系统信息仅供参考,具体以学校官方发布为准</p>
-        <p className="text-xs whitespace-pre-line">如有疑问,请联系招生热线：0591-83843292 或 18905009495(微信同号)</p>
+        </div>
+        
+        {/* Footer */}
+        <div className="text-center text-xs text-gray-500 mt-4 pb-4">
+          <p>本系统信息仅供参考,具体以学校官方发布为准</p>
+          <p className="text-xs whitespace-pre-line">如有疑问,请联系招生热线：0591-83843292 或 18905009495(微信同号)</p>
+        </div>
       </div>
       </div>
     </div>

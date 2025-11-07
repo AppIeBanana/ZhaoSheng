@@ -115,7 +115,7 @@ export default function MessageItem({
     >
       {isBotMessage && (
         <img
-          src="/imgs/小象.png"
+          src="../../imgs/小象.png"
           alt="AI Assistant"
           className="w-10 h-10 md:w-12 md:h-12 rounded-full mr-2 object-cover flex-shrink-0"
           aria-hidden="true"

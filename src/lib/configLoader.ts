@@ -2,7 +2,7 @@
 // 直接定义环境配置，不依赖.env文件
 
 // 获取当前环境（如果没有设置，默认为production）
-const currentEnv = 'production';
+const currentEnv = 'development';
 
 // 生产环境配置（从.env文件获取的值）
 const productionConfig = {

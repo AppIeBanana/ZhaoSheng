@@ -2,7 +2,7 @@
 // 直接定义环境配置，不依赖.env文件
 
 // 获取当前环境（如果没有设置，默认为production）
-const NODE_ENV = process.env.NODE_ENV || 'production';
+const NODE_ENV = 'production';
 
 // 生产环境配置（从.env文件获取的值）
 const productionConfig = {
@@ -60,19 +60,19 @@ const envConfigs = {
 
 // 获取当前环境的配置（优先使用环境变量覆盖配置文件中的值）
 const config = {
-  ...envConfigs[NODE_ENV] || productionConfig,
+  ...(NODE_ENV.indexOf('development') >= 0 ? developmentConfig : productionConfig),
   // 允许系统环境变量覆盖配置文件中的值
-  PORT: process.env.PORT || process.env.VITE_DEV_PORT || process.env.VITE_PROD_PORT || envConfigs[NODE_ENV].PORT,
-  MONGODB_URI: process.env.MONGODB_URI || process.env.VITE_DEV_MONGODB_URI || process.env.VITE_PROD_MONGODB_URI || envConfigs[NODE_ENV].MONGODB_URI,
-  MONGODB_USER: process.env.MONGODB_USER || process.env.VITE_DEV_MONGODB_USER || process.env.VITE_PROD_MONGODB_USER || envConfigs[NODE_ENV].MONGODB_USER,
-  MONGODB_PASSWORD: process.env.MONGODB_PASSWORD || process.env.VITE_DEV_MONGODB_PASSWORD || process.env.VITE_PROD_MONGODB_PASSWORD || envConfigs[NODE_ENV].MONGODB_PASSWORD,
-  MONGODB_DB_NAME: process.env.MONGODB_DB_NAME || process.env.VITE_DEV_MONGODB_DB_NAME || process.env.VITE_PROD_MONGODB_DB_NAME || envConfigs[NODE_ENV].MONGODB_DB_NAME,
-  REDIS_HOST: process.env.REDIS_HOST || process.env.VITE_DEV_REDIS_HOST || process.env.VITE_PROD_REDIS_HOST || envConfigs[NODE_ENV].REDIS_HOST,
-  REDIS_PORT: process.env.REDIS_PORT || process.env.VITE_DEV_REDIS_PORT || process.env.VITE_PROD_REDIS_PORT || envConfigs[NODE_ENV].REDIS_PORT,
-  REDIS_PASSWORD: process.env.REDIS_PASSWORD || process.env.VITE_DEV_REDIS_PASSWORD || process.env.VITE_PROD_REDIS_PASSWORD || envConfigs[NODE_ENV].REDIS_PASSWORD,
-  REDIS_DB: process.env.REDIS_DB || process.env.VITE_DEV_REDIS_DB || process.env.VITE_PROD_REDIS_DB || envConfigs[NODE_ENV].REDIS_DB,
-  LOG_DIR: process.env.LOG_DIR || process.env.VITE_DEV_LOG_DIR || process.env.VITE_PROD_LOG_DIR || envConfigs[NODE_ENV].LOG_DIR,
-  BACKEND_API_URL: process.env.BACKEND_API_URL || process.env.VITE_DEV_BACKEND_API_URL || process.env.VITE_PROD_BACKEND_API_URL || envConfigs[NODE_ENV].BACKEND_API_URL
+  PORT: process.env.PORT || process.env.VITE_DEV_PORT || process.env.VITE_PROD_PORT || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.PORT : productionConfig.PORT),
+  MONGODB_URI: process.env.MONGODB_URI || process.env.VITE_DEV_MONGODB_URI || process.env.VITE_PROD_MONGODB_URI || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.MONGODB_URI : productionConfig.MONGODB_URI),
+  MONGODB_USER: process.env.MONGODB_USER || process.env.VITE_DEV_MONGODB_USER || process.env.VITE_PROD_MONGODB_USER || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.MONGODB_USER : productionConfig.MONGODB_USER),
+  MONGODB_PASSWORD: process.env.MONGODB_PASSWORD || process.env.VITE_DEV_MONGODB_PASSWORD || process.env.VITE_PROD_MONGODB_PASSWORD || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.MONGODB_PASSWORD : productionConfig.MONGODB_PASSWORD),
+  MONGODB_DB_NAME: process.env.MONGODB_DB_NAME || process.env.VITE_DEV_MONGODB_DB_NAME || process.env.VITE_PROD_MONGODB_DB_NAME || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.MONGODB_DB_NAME : productionConfig.MONGODB_DB_NAME),
+  REDIS_HOST: process.env.REDIS_HOST || process.env.VITE_DEV_REDIS_HOST || process.env.VITE_PROD_REDIS_HOST || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.REDIS_HOST : productionConfig.REDIS_HOST),
+  REDIS_PORT: process.env.REDIS_PORT || process.env.VITE_DEV_REDIS_PORT || process.env.VITE_PROD_REDIS_PORT || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.REDIS_PORT : productionConfig.REDIS_PORT),
+  REDIS_PASSWORD: process.env.REDIS_PASSWORD || process.env.VITE_DEV_REDIS_PASSWORD || process.env.VITE_PROD_REDIS_PASSWORD || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.REDIS_PASSWORD : productionConfig.REDIS_PASSWORD),
+  REDIS_DB: process.env.REDIS_DB || process.env.VITE_DEV_REDIS_DB || process.env.VITE_PROD_REDIS_DB || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.REDIS_DB : productionConfig.REDIS_DB),
+  LOG_DIR: process.env.LOG_DIR || process.env.VITE_DEV_LOG_DIR || process.env.VITE_PROD_LOG_DIR || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.LOG_DIR : productionConfig.LOG_DIR),
+  BACKEND_API_URL: process.env.BACKEND_API_URL || process.env.VITE_DEV_BACKEND_API_URL || process.env.VITE_PROD_BACKEND_API_URL || (NODE_ENV.indexOf('development') >= 0 ? developmentConfig.BACKEND_API_URL : productionConfig.BACKEND_API_URL)
 };
 
 // 确保端口是数字类型

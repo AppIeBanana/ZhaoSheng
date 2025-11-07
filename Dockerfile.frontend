@@ -34,7 +34,7 @@ COPY --from=build /app/dist/static /usr/share/nginx/html
 RUN mkdir -p /var/www/certbot
 
 # 暴露端口
-EXPOSE 82 443
+EXPOSE 83 443
 
 # 启动nginx服务
 CMD ["nginx", "-g", "daemon off;"]

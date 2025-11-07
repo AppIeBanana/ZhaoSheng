@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import MessageItem from "../components/MessageItem";
 import ChatInput from "../components/ChatInput";
 import PredefinedQuestions from "../components/PredefinedQuestions";
-import Header from "../components/Header";
+import QAHeader from "../components/QAHeader";
 import useChatHistory from "../hooks/useChatHistory";
 import { setCurrentPhone } from "@/lib/storageService";
 
@@ -112,13 +112,29 @@ export default function QAPage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-blue-50 overflow-x-hidden">
-      {/* 使用通用Header组件 */}
-      <Header showBackButton={true} />
+      {/* 使用QA页面专用Header组件 */}
+      <QAHeader showBackButton={true} />
 
       {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto pt-4 pb-40">
-          {/* 猜你想问部分 - 使用组件 */}
-          <PredefinedQuestions onQuestionSelect={handlePredefinedQuestion} />
+          <div className="flex-1 overflow-y-auto pt-4 pb-40">
+            {/* 持久欢迎消息区域 */}
+            <div className="mx-4 mt-1 mb-2 py-2 px-4">
+              <div className="flex items-center">
+                <img 
+                  src="/imgs/小象.png" 
+                  alt="AI Assistant" 
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-full mr-3 object-cover flex-shrink-0"
+                />
+                <div className="text-sm leading-relaxed text-gray-700">
+                  Hi~ 我是福软小X
+                  <br />
+                  非常高兴认识您。您有哪些想咨询的问题呢？
+                </div>
+              </div>
+            </div>
+            
+            {/* 猜你想问部分 - 使用组件 */}
+            <PredefinedQuestions onQuestionSelect={handlePredefinedQuestion} />
 
         {/* Messages Container - Now part of the main scrollable content */}
         <div className="mx-4 space-y-6">

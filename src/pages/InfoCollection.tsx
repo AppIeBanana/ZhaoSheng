@@ -6,7 +6,7 @@ import { provinces } from '@/data/provinces.ts';
 import { ethnicities } from '@/data/ethnicities.ts';
 import { getUserData, getStoredPhone, setCurrentPhone } from '@/lib/storageService';
 import SearchableDropdown from '@/components/SearchableDropdown';
-import Header from '@/components/Header';
+import InfoHeader from '@/components/InfoHeader';
 import { validateStudentForm, StudentFormData, ValidationErrors } from '@/lib/formValidators';
 import { EXAM_TYPES, USER_TYPES, FORM_FIELDS, INITIAL_FORM_DATA, SUBMIT_STATUS } from '@/lib/formConstants';
 
@@ -140,8 +140,8 @@ export default function InfoCollection() {
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      {/* 使用通用Header组件 */}
-      <Header showBackButton={false} />
+      {/* 使用信息收集页面专用Header组件 */}
+      <InfoHeader showBackButton={false} />
       <div className="px-4 pt-4 pb-4 h-[calc(100vh-100px)] flex flex-col">
       
       {/* Content Container - 确保所有元素都在div内部 */}

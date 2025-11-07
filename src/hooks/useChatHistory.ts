@@ -41,17 +41,15 @@ export default function useChatHistory() {
           console.log(`已加载${phone}的历史聊天记录，共${formattedMessages.length}条`);
           success = true;
         } else {
-          // 确保添加欢迎消息
-          console.log('没有历史记录，添加欢迎消息');
-          addWelcomeMessage();
+          // 没有历史记录，保持空消息状态
+          console.log('没有历史记录，保持空消息状态');
           success = true; // 没有记录不算失败，直接成功
         }
       } catch (error) {
         console.error(`第${retryCount}次加载${phone}的聊天记录失败:`, error);
         if (retryCount >= maxRetries) {
-          console.log(`已达到最大重试次数(${maxRetries})，停止重试，添加欢迎消息`);
-          // 达到最大重试次数后，强制清空消息并添加欢迎消息
-          addWelcomeMessage();
+          console.log(`已达到最大重试次数(${maxRetries})，停止重试`);
+          // 达到最大重试次数后，保持空消息状态
         } else {
           // 等待一段时间后重试
           await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
@@ -60,29 +58,6 @@ export default function useChatHistory() {
     }
     
     setIsLoadingHistory(false);
-  };
-
-  // 添加欢迎消息
-  const addWelcomeMessage = () => {
-    console.log('添加欢迎消息到聊天界面');
-    const welcomeMessage: Message = {
-      id: `welcome-${Date.now()}`,
-      content: `Hi~ 我是福软小X
-非常高兴认识您。您有哪些想咨询的问题呢？`,
-      sender: 'bot',
-      timestamp: new Date(),
-    };
-    
-    // 使用函数式更新确保获取最新的messages状态
-    setMessages(prevMessages => {
-      // 如果已经有消息，不重复添加欢迎消息
-      if (prevMessages.length > 0) {
-        console.log('已有消息，不重复添加欢迎消息');
-        return prevMessages;
-      }
-      console.log('欢迎消息已添加:', welcomeMessage);
-      return [welcomeMessage];
-    });
   };
 
   // 添加用户消息
@@ -122,20 +97,10 @@ export default function useChatHistory() {
     setLastUpdatedMessageId(messageId);
   };
 
-  // 组件挂载时立即尝试添加欢迎消息，不等待用户数据加载
-  useEffect(() => {
-    console.log('组件挂载，立即尝试添加欢迎消息');
-    // 确保即使在用户数据加载之前也显示欢迎消息
-    if (messages.length === 0) {
-      addWelcomeMessage();
-    }
-  }, []);
-
   // 监听学生数据变化，加载对应手机号的聊天记录
   useEffect(() => {
     console.log('用户数据变化，当前手机号:', userData?.phone);
     
-    // 确保即使在初始化过程中，也能正确显示欢迎消息
     const initializeChat = async () => {
       try {
         if (!isInitializedRef.current) {
@@ -146,38 +111,23 @@ export default function useChatHistory() {
           if (userData?.phone) {
             console.log('初始化，有手机号，加载聊天记录');
             await loadMessagesByPhone(userData.phone);
-            // 双重检查：如果加载后消息仍然为空，强制添加欢迎消息
-            setTimeout(() => {
-              if (messages.length === 0) {
-                console.log('加载后消息为空，强制添加欢迎消息');
-                addWelcomeMessage();
-              }
-            }, 100);
           } else {
-            console.log('初始化，无手机号，添加欢迎消息');
-            addWelcomeMessage();
+            console.log('初始化，无手机号，保持空消息状态');
+            // 没有手机号时保持空消息状态
           }
         } else {
           // 当学生数据变化时，如果有手机号，加载对应聊天记录
           if (userData?.phone) {
             console.log('数据变化，有手机号，加载聊天记录');
             await loadMessagesByPhone(userData.phone);
-            // 双重检查：如果加载后消息仍然为空，强制添加欢迎消息
-            setTimeout(() => {
-              if (messages.length === 0) {
-                console.log('加载后消息为空，强制添加欢迎消息');
-                addWelcomeMessage();
-              }
-            }, 100);
           } else {
-            console.log('数据变化，无手机号，添加欢迎消息');
-            addWelcomeMessage();
+            console.log('数据变化，无手机号，保持空消息状态');
+            // 没有手机号时保持空消息状态
           }
         }
       } catch (error) {
         console.error('初始化聊天出错:', error);
-        // 出错时也强制添加欢迎消息，确保界面不会空白
-        addWelcomeMessage();
+        // 出错时保持空消息状态
       }
     };
     

@@ -1,13 +1,12 @@
 // MongoDB数据存储模块，用于与后端MongoDB交互
-import { fetchWithRetry } from '../utils';
+import { fetchWithRetry, getBackendApiUrl } from '../utils';
 import config from '../configLoader';
 
 /**
- * 使用相对路径API URL，通过Nginx代理避免CORS问题
+ * 获取后端API基础URL，与Redis模块保持一致
  */
 function getApiUrl(): string {
-  // 直接返回相对路径，让请求通过Nginx代理
-  return '';
+  return getBackendApiUrl() || 'http://localhost:3001';
 }
 
 /**

@@ -74,8 +74,7 @@ async function saveUserDataToMongoDB(_userId, userData) {
       }
     );
     
-    const operationType = existingDoc ? '更新' : '插入';
-    console.log(`MongoDB${operationType}操作成功: phone=${userData.phone}`);
+    console.log(`MongoDB数据操作成功: phone=${userData.phone}`);
     
     return result.toObject();
   } catch (error) {

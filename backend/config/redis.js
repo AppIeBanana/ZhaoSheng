@@ -5,11 +5,12 @@ const { redisLogger } = require('../utils/logger');
 
 // 获取Redis配置
 function getRedisConfig() {
-  const config = require('./configLoader');
+  const configLoader = require('./configLoader');
+  const config = configLoader.default || {};
   
   return {
-    host: config.REDIS_HOST,
-    port: parseInt(config.REDIS_PORT, 10),
+    host: config.REDIS_HOST || 'localhost',
+    port: parseInt(config.REDIS_PORT || '6379', 10),
     password: config.REDIS_PASSWORD
   };
 }

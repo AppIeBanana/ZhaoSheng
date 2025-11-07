@@ -2,11 +2,11 @@
 // 直接定义环境配置，不依赖.env文件
 
 // 获取当前环境（如果没有设置，默认为production）
-const currentEnv = import.meta.env.MODE || import.meta.env.NODE_ENV || 'production';
+const currentEnv = 'production';
 
 // 生产环境配置（从.env文件获取的值）
 const productionConfig = {
-  // 前端应用配置
+  // 前端应用配置 
   appTitle: '福软招生智能问答',
   
   // 后端API配置
@@ -63,30 +63,34 @@ const developmentConfig = {
 };
 
 // 根据当前环境选择配置
-let config = currentEnv === 'production' ? productionConfig : developmentConfig;
+let config = currentEnv.indexOf('development') >= 0 ? developmentConfig : productionConfig;
 
 // 允许环境变量覆盖默认配置
 config = {
   ...config,
   // 后端API配置覆盖
   backendApiUrl: import.meta.env.VITE_BACKEND_API_URL || 
-                import.meta.env.VITE_PROD_BACKEND_API_URL || 
-                import.meta.env.VITE_DEV_BACKEND_API_URL || 
+                (currentEnv.indexOf('production') >= 0 ? 
+                  import.meta.env.VITE_PROD_BACKEND_API_URL : 
+                  import.meta.env.VITE_DEV_BACKEND_API_URL) || 
                 config.backendApiUrl,
   // 应用标题覆盖
   appTitle: import.meta.env.VITE_APP_TITLE || config.appTitle,
   // Redis配置覆盖
   redisHost: import.meta.env.VITE_REDIS_HOST || 
-            import.meta.env.VITE_PROD_REDIS_HOST || 
-            import.meta.env.VITE_DEV_REDIS_HOST || 
+            (currentEnv.indexOf('production') >= 0 ? 
+              import.meta.env.VITE_PROD_REDIS_HOST : 
+              import.meta.env.VITE_DEV_REDIS_HOST) || 
             config.redisHost,
   redisPort: import.meta.env.VITE_REDIS_PORT || 
-             import.meta.env.VITE_PROD_REDIS_PORT || 
-             import.meta.env.VITE_DEV_REDIS_PORT || 
+             (currentEnv.indexOf('production') >= 0 ? 
+               import.meta.env.VITE_PROD_REDIS_PORT : 
+               import.meta.env.VITE_DEV_REDIS_PORT) || 
              config.redisPort,
   redisPassword: import.meta.env.VITE_REDIS_PASSWORD || 
-                 import.meta.env.VITE_PROD_REDIS_PASSWORD || 
-                 import.meta.env.VITE_DEV_REDIS_PASSWORD || 
+                 (currentEnv.indexOf('production') >= 0 ? 
+                   import.meta.env.VITE_PROD_REDIS_PASSWORD : 
+                   import.meta.env.VITE_DEV_REDIS_PASSWORD) || 
                  config.redisPassword,
   // Coze API配置覆盖
   cozeAuthToken: import.meta.env.VITE_COZE_AUTH_TOKEN || config.cozeAuthToken,
@@ -95,8 +99,9 @@ config = {
   cozeWorkflowId: import.meta.env.VITE_COZE_WORKFLOW_ID || config.cozeWorkflowId,
   // 端口配置覆盖
   port: import.meta.env.VITE_PORT || 
-        import.meta.env.VITE_PROD_PORT || 
-        import.meta.env.VITE_DEV_PORT || 
+        (currentEnv.indexOf('production') >= 0 ? 
+          import.meta.env.VITE_PROD_PORT : 
+          import.meta.env.VITE_DEV_PORT) || 
         config.port
 };
 

@@ -1,7 +1,8 @@
 // MongoDB数据库连接配置
 const mongoose = require('mongoose');
 const { mongodbLogger } = require('../utils/logger');
-const config = require('./configLoader');
+const configLoader = require('./configLoader');
+const config = configLoader.default || {};
 let mongooseConnection;
 
 // 连接重试配置
@@ -38,7 +39,7 @@ async function connectMongoDB() {
         mongoURI = `${baseUriWithoutTrailingSlash}/${dbName}?retryWrites=true&w=majority`;
       }
       
-      // 配置Mongoose连接选项
+      // 配置Mongoose连接选项（使用现代Mongoose支持的选项）
       const mongooseOptions = {
         serverSelectionTimeoutMS: 10000, // 增加服务器选择超时时间到10秒
         socketTimeoutMS: 60000,         // 增加套接字超时时间到60秒
@@ -48,7 +49,6 @@ async function connectMongoDB() {
         heartbeatFrequencyMS: 10000,    // 心跳频率
         autoIndex: false,               // 禁用自动索引创建
         bufferCommands: true,           // 启用命令缓冲
-        bufferMaxEntries: 1000,         // 最大缓冲条目数
         connectTimeoutMS: 15000         // 连接超时时间
       };
       
